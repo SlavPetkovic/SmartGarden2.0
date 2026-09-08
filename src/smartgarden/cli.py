@@ -1,0 +1,138 @@
+"""Command-line entry point.
+
+Layer 1 provides `config check` and `physics`. Later layers add `run`, `web`,
+`doctor`, `export` and `backup` as subcommands here.
+"""
+
+from __future__ import annotations
+
+import argparse
+import os
+import sys
+from pathlib import Path
+
+from smartgarden import __version__
+from smartgarden.config import DEFAULT_CONFIG_DIR, load_config
+from smartgarden.core.errors import SmartGardenError
+from smartgarden.core.physics import (
+    dew_point,
+    lux_to_ppfd,
+    vapour_pressure_deficit,
+)
+
+__all__ = ["main", "build_parser"]
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="smartgarden",
+        description="Sensor-driven irrigation and lighting for a Raspberry Pi.",
+    )
+    parser.add_argument("--version", action="version", version=f"smartgarden {__version__}")
+    parser.add_argument(
+        "--config-dir",
+        type=Path,
+        default=DEFAULT_CONFIG_DIR,
+        metavar="DIR",
+        help=f"configuration directory (default: {DEFAULT_CONFIG_DIR})",
+    )
+
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    config_cmd = sub.add_parser("config", help="inspect configuration")
+    config_sub = config_cmd.add_subparsers(dest="config_command", required=True)
+    config_sub.add_parser("check", help="validate the configuration and report what it describes")
+
+    physics_cmd = sub.add_parser(
+        "physics", help="compute derived values from a temperature/humidity/lux triple"
+    )
+    physics_cmd.add_argument("--temp", type=float, required=True, metavar="C")
+    physics_cmd.add_argument("--rh", type=float, required=True, metavar="PCT")
+    physics_cmd.add_argument("--lux", type=float, default=None, metavar="LUX")
+    physics_cmd.add_argument("--lux-per-ppfd", type=float, default=54.0)
+
+    return parser
+
+
+def _cmd_config_check(config_dir: Path) -> int:
+    config = load_config(config_dir)
+
+    print(f"Configuration in {config_dir} is valid.\n")
+    print(f"  nodes    {len(config.nodes)}")
+    print(f"  sensors  {len(config.sensors)}")
+    print(f"  zones    {len(config.zones)}")
+    print(f"  devices  {len(config.devices)}")
+    print(f"  plants   {len(config.plants)}")
+
+    for zone in config.zones:
+        plants = config.plants_in(zone.slug)
+        devices = config.devices_in(zone.slug)
+        state = "enabled" if zone.enabled else "DISABLED"
+        print(f"\n  {zone.name}  [{zone.slug}, {state}]")
+        print(
+            f"    window {zone.watering_start_hour:02d}:00-"
+            f"{zone.watering_end_hour:02d}:00 {zone.timezone}"
+            f"  budget {zone.daily_budget_seconds:.0f}s/day"
+            f"  max {zone.max_pulses_per_hour}/h"
+        )
+        for plant in plants:
+            band = (
+                f"{plant.moisture_low:.0f}-{plant.moisture_high:.0f}"
+                if plant.moisture_low is not None and plant.moisture_high is not None
+                else "not set"
+            )
+            print(f"    plant  {plant.name:<16} moisture {band:<12} dli {plant.dli_target_moles}")
+        for device in devices:
+            sim = "  (simulated)" if device.driver == "simulated" else ""
+            print(
+                f"    device {device.slug:<20} {device.kind.value:<9} "
+                f"pin {device.pin} max {device.max_on_seconds:.0f}s{sim}"
+            )
+
+    if not config.app.automation_enabled:
+        print(
+            "\n  Automation is DISABLED (app.toml). The loop will read, store and log\n"
+            "  decisions but drive nothing. Leave it this way until thresholds are\n"
+            "  calibrated from real readings."
+        )
+    return 0
+
+
+def _cmd_physics(temp: float, rh: float, lux: float | None, lux_per_ppfd: float) -> int:
+    print(f"  air temperature        {temp:.2f} C")
+    print(f"  relative humidity      {rh:.1f} %")
+    print(f"  vapour pressure deficit {vapour_pressure_deficit(temp, rh):.3f} kPa")
+    print(f"  dew point              {dew_point(temp, rh):.2f} C")
+    if lux is not None:
+        ppfd = lux_to_ppfd(lux, lux_per_ppfd)
+        print(f"  illuminance            {lux:.0f} lux")
+        print(f"  PPFD (at {lux_per_ppfd:.0f} lux/umol)  {ppfd:.1f} umol/m2/s")
+        print(f"  12h at this level      {ppfd * 43200 / 1e6:.2f} mol/m2/day")
+    return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    try:
+        if args.command == "config":
+            return _cmd_config_check(args.config_dir)
+        if args.command == "physics":
+            return _cmd_physics(args.temp, args.rh, args.lux, args.lux_per_ppfd)
+    except BrokenPipeError:
+        # Output was piped into something that closed early -- `| head`, or a
+        # pager the user quit. That is normal usage, not a failure. Point the
+        # remaining writes at /dev/null so the interpreter's exit-time flush
+        # does not raise the same error again on the way out.
+        os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
+        return 0
+    except SmartGardenError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

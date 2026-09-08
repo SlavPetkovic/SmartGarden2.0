@@ -1,0 +1,31 @@
+# Runtime settings.
+#
+# Hardware topology lives in sensors.toml and devices.toml; per-plant tuning
+# lives in the database and is edited from the dashboard. This file is for
+# things that are neither.
+
+[app]
+database_path = "data/smartgarden.db"
+backup_dir    = "data/backups"
+backup_keep   = 7
+
+# How often the control loop wakes. Individual sensors are read at their own
+# interval_seconds; this is just the heartbeat.
+tick_seconds = 10.0
+
+log_level = "INFO"
+
+# Retention tiers. Raw samples are pruned after raw_retention_days once they
+# have been rolled up; minute rollups after minute_retention_days. Quarter-hour
+# rollups are kept indefinitely.
+raw_retention_days    = 7
+minute_retention_days = 90
+
+# Master switch for acting on decisions.
+#
+# Deliberately FALSE out of the box. The loop still reads, stores and logs what
+# it *would* have done, but drives nothing. Leave it off until you have several
+# days of real readings and have set thresholds from them -- see the calibration
+# note in docs/architecture.html §06. Automating against guessed thresholds
+# gives you a system that runs without working.
+automation_enabled = false

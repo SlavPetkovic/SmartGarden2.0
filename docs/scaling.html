@@ -1,0 +1,338 @@
+<title>Bus, Mux or Node</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --ground:   #F4F7F6;
+    --surface:  #FFFFFF;
+    --raised:   #EAEFED;
+    --ink:      #0F1614;
+    --muted:    #566763;
+    --faint:    #7E8F8B;
+    --line:     #D2DBD8;
+    --line-str: #B3C0BC;
+    --local:    #0B7A5E;
+    --local-bg: #E2F0EB;
+    --remote:   #A85D12;
+    --remote-bg:#F6EADA;
+    --warn:     #A6362A;
+    --warn-bg:  #F7E5E2;
+    --shadow:   0 1px 2px rgba(15,22,20,.06), 0 8px 24px -12px rgba(15,22,20,.18);
+    --f-sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --f-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0D1211; --surface:#141C1A; --raised:#1B2523; --ink:#E7EDEB;
+      --muted:#93A5A0; --faint:#74857F; --line:#26312F; --line-str:#3A4845;
+      --local:#3FC59B; --local-bg:#0F2A23; --remote:#E0983F; --remote-bg:#2C2013;
+      --warn:#EE8B7A; --warn-bg:#2E1714;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px -14px rgba(0,0,0,.7);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0D1211; --surface:#141C1A; --raised:#1B2523; --ink:#E7EDEB;
+    --muted:#93A5A0; --faint:#74857F; --line:#26312F; --line-str:#3A4845;
+    --local:#3FC59B; --local-bg:#0F2A23; --remote:#E0983F; --remote-bg:#2C2013;
+    --warn:#EE8B7A; --warn-bg:#2E1714;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px -14px rgba(0,0,0,.7);
+  }
+
+  * { box-sizing: border-box; }
+  body { background: var(--ground); color: var(--ink); font-family: var(--f-sans);
+         font-size: 16px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 1060px; margin: 0 auto; padding: 56px 28px 96px;
+          display: flex; flex-direction: column; gap: 42px; }
+
+  header { display: flex; flex-direction: column; gap: 14px; max-width: 68ch; }
+  .eyebrow { font-family: var(--f-mono); font-size: 11px; letter-spacing: .14em;
+             text-transform: uppercase; color: var(--faint); }
+  h1 { font-size: clamp(30px, 4.4vw, 46px); line-height: 1.08; font-weight: 600;
+       letter-spacing: -.02em; margin: 0; text-wrap: balance; }
+  .lead { font-size: 18px; color: var(--muted); margin: 0; text-wrap: pretty; }
+
+  h2 { font-size: 13px; font-weight: 600; font-family: var(--f-mono); letter-spacing: .1em;
+       text-transform: uppercase; color: var(--faint); margin: 0 0 -20px; }
+  section { display: flex; flex-direction: column; gap: 20px; }
+  p { margin: 0; max-width: 68ch; text-wrap: pretty; }
+  code { font-family: var(--f-mono); font-size: .88em; }
+
+  .rule { border-left: 3px solid var(--remote); padding: 4px 0 4px 20px; font-size: 20px;
+          line-height: 1.42; max-width: 60ch; font-weight: 500; }
+  .rule em { font-style: normal; color: var(--remote); }
+
+  figure { margin: 0; background: var(--surface); border: 1px solid var(--line);
+           border-radius: 10px; box-shadow: var(--shadow); padding: 22px 22px 18px;
+           display: flex; flex-direction: column; gap: 16px; }
+  .scroller { overflow-x: auto; }
+  figure svg { display: block; width: 100%; min-width: 660px; height: auto; }
+  figcaption { font-size: 13.5px; color: var(--muted); max-width: 76ch;
+               border-top: 1px solid var(--line); padding-top: 14px; text-wrap: pretty; }
+  figcaption strong { color: var(--ink); font-weight: 600; }
+
+  .d-box   { fill: var(--raised);   stroke: var(--line-str); stroke-width: 1.2; }
+  .d-main  { fill: var(--surface);  stroke: var(--ink);      stroke-width: 1.6; }
+  .d-local { fill: var(--local-bg); stroke: var(--local);    stroke-width: 1.4; }
+  .d-remote{ fill: var(--remote-bg);stroke: var(--remote);   stroke-width: 1.4; }
+  .d-warn  { fill: var(--warn-bg);  stroke: var(--warn);     stroke-width: 1.3; }
+  .d-off   { fill: var(--raised);   stroke: var(--line-str); stroke-width: 1.1; opacity: .55; }
+  .w-local { stroke: var(--local);  fill: none; stroke-width: 2.4; }
+  .w-remote{ stroke: var(--remote); fill: none; stroke-width: 2.4; }
+  .w-warn  { stroke: var(--warn);   fill: none; stroke-width: 2.4; }
+  .w-thin  { stroke: var(--line-str); fill: none; stroke-width: 1.3; }
+  .w-off   { stroke: var(--line-str); fill: none; stroke-width: 1.3; opacity: .55; }
+  .dash    { stroke: var(--remote); fill: none; stroke-width: 1.3; stroke-dasharray: 6 5; }
+  .fill-local  { fill: var(--local); }
+  .fill-remote { fill: var(--remote); }
+  .t   { fill: var(--ink);   font-family: var(--f-sans); font-size: 13px; font-weight: 500; }
+  .tm  { fill: var(--muted); font-family: var(--f-mono); font-size: 11px; }
+  .ts  { fill: var(--muted); font-family: var(--f-sans); font-size: 11.5px; }
+  .tl  { fill: var(--faint); font-family: var(--f-mono); font-size: 10px; letter-spacing: .1em; }
+  .tlocal  { fill: var(--local);  font-family: var(--f-mono); font-size: 10px; letter-spacing: .1em; }
+  .tremote { fill: var(--remote); font-family: var(--f-mono); font-size: 10px; letter-spacing: .1em; }
+  .twarn   { fill: var(--warn);   font-family: var(--f-sans); font-size: 12px; font-weight: 600; }
+  .tgood   { fill: var(--local);  font-family: var(--f-sans); font-size: 12px; font-weight: 600; }
+
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+  caption { text-align: left; font-size: 13px; color: var(--muted); padding-bottom: 10px; }
+  th, td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  thead th { font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .1em;
+             text-transform: uppercase; color: var(--faint); font-weight: 500;
+             border-bottom: 1px solid var(--line-str); }
+  tbody tr:last-child td { border-bottom: none; }
+  td .what { font-weight: 600; display: block; }
+  td .lim { color: var(--muted); font-size: 13px; }
+  .qty { font-family: var(--f-mono); font-variant-numeric: tabular-nums; color: var(--muted); width: 52px; }
+
+  .note { border-left: 3px solid var(--local); padding-left: 20px; max-width: 66ch; }
+  .note h3 { margin: 0 0 8px; font-size: 17px; font-weight: 600; }
+  .note p { color: var(--muted); }
+  .note.decided { border-left-color: var(--line-str); }
+
+  footer { border-top: 1px solid var(--line); padding-top: 20px; font-size: 13.5px;
+           color: var(--faint); max-width: 76ch; }
+  footer code { color: var(--muted); }
+</style>
+
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">SmartGarden · scaling note · Sept 2026</div>
+    <h1>Bus, Mux or Node</h1>
+    <p class="lead">One houseplant indoors and a bed of ten outdoors are not the same system twice. They are two zones, two buses and two environment stations — and the outdoor one cannot be built the way the indoor one is.</p>
+  </header>
+
+  <section>
+    <p class="rule">A node answers <em>distance</em>. A multiplexer answers <em>everything that comes after the fourth plant</em> — and out in the bed, that includes the wiring itself.</p>
+  </section>
+
+  <section>
+    <h2>The system, as it will actually be built</h2>
+    <figure>
+      <div class="scroller">
+        <svg viewBox="0 0 1000 620" role="img" aria-label="Diagram: an indoor zone where the Raspberry Pi 5 carries one Seesaw, a BME680 and a VEML7700 on its own I2C bus; and a garden zone where a Pi Zero 2 W carries its own BME680 and VEML7700 plus a TCA9548A multiplexer fanning out to eight isolated channels holding ten or more Seesaws. Both zones write into the same readings table, the garden over Wi-Fi through the ingest endpoint.">
+          <defs>
+            <marker id="ahL" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <polygon points="0,1 10,5 0,9" class="fill-local"></polygon>
+            </marker>
+            <marker id="ahR" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <polygon points="0,1 10,5 0,9" class="fill-remote"></polygon>
+            </marker>
+          </defs>
+
+          <text x="16" y="26" class="tlocal">ZONE: INDOOR — ONE PLANT, IN THE HOUSE</text>
+          <rect x="806" y="20" width="15" height="10" class="d-local"></rect>
+          <text x="829" y="29" class="ts">wired, local</text>
+          <rect x="806" y="42" width="15" height="10" class="d-remote"></rect>
+          <text x="829" y="51" class="ts">over Wi-Fi</text>
+
+          <rect x="16" y="110" width="150" height="70" rx="8" class="d-main"></rect>
+          <text x="91" y="139" class="t" text-anchor="middle">Raspberry Pi 5</text>
+          <text x="91" y="159" class="tm" text-anchor="middle">node: pi-local</text>
+          <line x1="166" y1="145" x2="520" y2="145" class="w-local"></line>
+          <text x="176" y="132" class="tlocal">I²C BUS 1</text>
+
+          <rect x="210" y="52" width="110" height="44" rx="6" class="d-box"></rect>
+          <text x="265" y="72" class="t" text-anchor="middle">BME680</text>
+          <text x="265" y="88" class="tm" text-anchor="middle">air · 0x77</text>
+          <rect x="350" y="52" width="110" height="44" rx="6" class="d-box"></rect>
+          <text x="405" y="72" class="t" text-anchor="middle">VEML7700</text>
+          <text x="405" y="88" class="tm" text-anchor="middle">light · 0x10</text>
+          <line x1="265" y1="96" x2="265" y2="145" class="w-thin"></line>
+          <line x1="405" y1="96" x2="405" y2="145" class="w-thin"></line>
+
+          <line x1="288" y1="145" x2="288" y2="188" class="w-thin"></line>
+          <rect x="233" y="188" width="110" height="44" rx="6" class="d-local"></rect>
+          <text x="288" y="208" class="t" text-anchor="middle">Seesaw</text>
+          <text x="288" y="224" class="tm" text-anchor="middle">soil · 0x36</text>
+          <text x="288" y="250" class="ts" text-anchor="middle">one plant — one of the four addresses used</text>
+
+          <path d="M520 145 L700 145 L700 290 L782 290" class="w-local" marker-end="url(#ahL)"></path>
+          <text x="610" y="137" class="ts" text-anchor="middle">writes directly</text>
+
+          <rect x="8" y="296" width="700" height="310" rx="10" class="dash"></rect>
+          <text x="16" y="288" class="tremote">ZONE: GARDEN — ONE BED, 10+ PLANTS AT 20–30 cm</text>
+
+          <rect x="26" y="380" width="150" height="66" rx="8" class="d-main"></rect>
+          <text x="101" y="408" class="t" text-anchor="middle">Pi Zero 2 W</text>
+          <text x="101" y="428" class="tm" text-anchor="middle">node: bed-1</text>
+          <line x1="176" y1="413" x2="600" y2="413" class="w-remote"></line>
+          <text x="186" y="400" class="tremote">I²C BUS 1</text>
+
+          <text x="335" y="314" class="ts" text-anchor="middle">the bed's own weather — not the house's</text>
+          <rect x="210" y="326" width="110" height="44" rx="6" class="d-box"></rect>
+          <text x="265" y="346" class="t" text-anchor="middle">BME680</text>
+          <text x="265" y="362" class="tm" text-anchor="middle">air · 0x77</text>
+          <rect x="350" y="326" width="110" height="44" rx="6" class="d-box"></rect>
+          <text x="405" y="346" class="t" text-anchor="middle">VEML7700</text>
+          <text x="405" y="362" class="tm" text-anchor="middle">light · 0x10</text>
+          <line x1="265" y1="370" x2="265" y2="413" class="w-thin"></line>
+          <line x1="405" y1="370" x2="405" y2="413" class="w-thin"></line>
+
+          <line x1="540" y1="413" x2="540" y2="456" class="w-thin"></line>
+          <rect x="480" y="456" width="120" height="46" rx="6" class="d-remote"></rect>
+          <text x="540" y="476" class="t" text-anchor="middle">TCA9548A</text>
+          <text x="540" y="492" class="tm" text-anchor="middle">mux · 0x70</text>
+
+          <path d="M540 502 L540 520" class="w-thin"></path>
+          <line x1="252" y1="520" x2="644" y2="520" class="w-thin"></line>
+          <line x1="252" y1="520" x2="252" y2="538" class="w-thin"></line>
+          <line x1="308" y1="520" x2="308" y2="538" class="w-thin"></line>
+          <line x1="364" y1="520" x2="364" y2="538" class="w-thin"></line>
+          <line x1="420" y1="520" x2="420" y2="538" class="w-thin"></line>
+          <line x1="476" y1="520" x2="476" y2="538" class="w-thin"></line>
+          <line x1="532" y1="520" x2="532" y2="538" class="w-thin"></line>
+          <line x1="588" y1="520" x2="588" y2="538" class="w-thin"></line>
+          <line x1="644" y1="520" x2="644" y2="538" class="w-thin"></line>
+          <rect x="230" y="538" width="44" height="34" rx="5" class="d-local"></rect>
+          <text x="252" y="559" class="tm" text-anchor="middle">0</text>
+          <rect x="286" y="538" width="44" height="34" rx="5" class="d-local"></rect>
+          <text x="308" y="559" class="tm" text-anchor="middle">1</text>
+          <rect x="342" y="538" width="44" height="34" rx="5" class="d-local"></rect>
+          <text x="364" y="559" class="tm" text-anchor="middle">2</text>
+          <rect x="398" y="538" width="44" height="34" rx="5" class="d-local"></rect>
+          <text x="420" y="559" class="tm" text-anchor="middle">3</text>
+          <rect x="454" y="538" width="44" height="34" rx="5" class="d-local"></rect>
+          <text x="476" y="559" class="tm" text-anchor="middle">4</text>
+          <rect x="510" y="538" width="44" height="34" rx="5" class="d-local"></rect>
+          <text x="532" y="559" class="tm" text-anchor="middle">5</text>
+          <rect x="566" y="538" width="44" height="34" rx="5" class="d-local"></rect>
+          <text x="588" y="559" class="tm" text-anchor="middle">6</text>
+          <rect x="622" y="538" width="44" height="34" rx="5" class="d-local"></rect>
+          <text x="644" y="559" class="tm" text-anchor="middle">7</text>
+          <text x="448" y="592" class="ts" text-anchor="middle">eight isolated channels · 10+ Seesaws, one or two per channel</text>
+
+          <path d="M600 413 L740 413 L740 330 L782 330" class="w-remote" marker-end="url(#ahR)"></path>
+          <text x="655" y="405" class="ts" text-anchor="middle">POST /ingest · ARCH-6</text>
+
+          <rect x="782" y="250" width="204" height="110" rx="8" class="d-main"></rect>
+          <text x="884" y="288" class="t" text-anchor="middle" style="font-family:var(--f-mono);font-size:15px">readings</text>
+          <text x="884" y="312" class="ts" text-anchor="middle">one row per</text>
+          <text x="884" y="330" class="tm" text-anchor="middle">(channel, ts, value)</text>
+          <text x="884" y="349" class="tl" text-anchor="middle">DATA-1</text>
+        </svg>
+      </div>
+      <figcaption><strong>Two zones, one table.</strong> Each zone carries its own air and light sensors because indoor and outdoor weather are different measurements, not noisy copies — and VPD is derived per zone from that zone's own temperature and humidity (CTRL-10). The address ceiling is per bus, so the indoor Seesaw at <code>0x36</code> and a garden Seesaw at <code>0x36</code> never collide. Rules ask for a role in a zone and never learn which node sent the reading (DATA-3).</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h2>Why the bed needs a multiplexer twice over</h2>
+    <figure>
+      <div class="scroller">
+        <svg viewBox="0 0 960 310" role="img" aria-label="Comparison: ten Seesaws on a single bus present one kilohm of combined pull-up and roughly ten metres of cable, exceeding both the three milliamp sink limit and the four hundred picofarad capacitance budget. Behind a multiplexer only one channel is connected at a time, so the load is two sensors and about two metres.">
+          <text x="20" y="24" class="tl">TEN ON ONE BUS</text>
+          <rect x="20" y="106" width="96" height="52" rx="8" class="d-main"></rect>
+          <text x="68" y="137" class="t" text-anchor="middle">node</text>
+          <line x1="116" y1="132" x2="424" y2="132" class="w-warn"></line>
+          <line x1="140" y1="132" x2="140" y2="172" class="w-warn"></line>
+          <line x1="170" y1="132" x2="170" y2="172" class="w-warn"></line>
+          <line x1="200" y1="132" x2="200" y2="172" class="w-warn"></line>
+          <line x1="230" y1="132" x2="230" y2="172" class="w-warn"></line>
+          <line x1="260" y1="132" x2="260" y2="172" class="w-warn"></line>
+          <line x1="290" y1="132" x2="290" y2="172" class="w-warn"></line>
+          <line x1="320" y1="132" x2="320" y2="172" class="w-warn"></line>
+          <line x1="350" y1="132" x2="350" y2="172" class="w-warn"></line>
+          <line x1="380" y1="132" x2="380" y2="172" class="w-warn"></line>
+          <line x1="410" y1="132" x2="410" y2="172" class="w-warn"></line>
+          <rect x="127" y="172" width="26" height="30" rx="4" class="d-warn"></rect>
+          <rect x="157" y="172" width="26" height="30" rx="4" class="d-warn"></rect>
+          <rect x="187" y="172" width="26" height="30" rx="4" class="d-warn"></rect>
+          <rect x="217" y="172" width="26" height="30" rx="4" class="d-warn"></rect>
+          <rect x="247" y="172" width="26" height="30" rx="4" class="d-warn"></rect>
+          <rect x="277" y="172" width="26" height="30" rx="4" class="d-warn"></rect>
+          <rect x="307" y="172" width="26" height="30" rx="4" class="d-warn"></rect>
+          <rect x="337" y="172" width="26" height="30" rx="4" class="d-warn"></rect>
+          <rect x="367" y="172" width="26" height="30" rx="4" class="d-warn"></rect>
+          <rect x="397" y="172" width="26" height="30" rx="4" class="d-warn"></rect>
+          <text x="275" y="230" class="ts" text-anchor="middle">every pull-up loads the bus at once — 10 × 10 kΩ = 1 kΩ</text>
+          <text x="275" y="250" class="ts" text-anchor="middle">≈ 2.9 mA sink, against the 3 mA the I²C standard allows</text>
+          <text x="275" y="270" class="ts" text-anchor="middle">≈ 10 m of cable, against a 400 pF budget</text>
+          <text x="275" y="294" class="twarn" text-anchor="middle">fails on both counts, before addresses are even considered</text>
+
+          <line x1="472" y1="20" x2="472" y2="290" class="w-thin"></line>
+
+          <text x="500" y="24" class="tl">BEHIND A MUX</text>
+          <rect x="500" y="106" width="96" height="52" rx="8" class="d-main"></rect>
+          <text x="548" y="137" class="t" text-anchor="middle">node</text>
+          <line x1="596" y1="132" x2="678" y2="132" class="w-remote"></line>
+          <rect x="678" y="108" width="96" height="48" rx="6" class="d-remote"></rect>
+          <text x="726" y="128" class="t" text-anchor="middle">TCA9548A</text>
+          <text x="726" y="145" class="tm" text-anchor="middle">0x70</text>
+          <line x1="774" y1="120" x2="856" y2="120" class="w-local"></line>
+          <line x1="774" y1="148" x2="856" y2="148" class="w-off"></line>
+          <line x1="774" y1="176" x2="856" y2="176" class="w-off"></line>
+          <rect x="856" y="106" width="80" height="28" rx="5" class="d-local"></rect>
+          <text x="896" y="125" class="tm" text-anchor="middle">ch 0 · live</text>
+          <rect x="856" y="134" width="80" height="28" rx="5" class="d-off"></rect>
+          <text x="896" y="153" class="tm" text-anchor="middle">ch 1</text>
+          <rect x="856" y="162" width="80" height="28" rx="5" class="d-off"></rect>
+          <text x="896" y="181" class="tm" text-anchor="middle">ch 2 …</text>
+          <text x="718" y="230" class="ts" text-anchor="middle">only the selected channel is connected</text>
+          <text x="718" y="250" class="ts" text-anchor="middle">2 × 10 kΩ = 5 kΩ → ≈ 0.6 mA</text>
+          <text x="718" y="270" class="ts" text-anchor="middle">≈ 2 m of cable on that branch</text>
+          <text x="718" y="294" class="tgood" text-anchor="middle">comfortable, with seven channels spare</text>
+        </svg>
+      </div>
+      <figcaption><strong>The multiplexer is doing two jobs, and the second one is the surprise.</strong> Everyone reaches for a TCA9548A because a Seesaw only has four addresses. The less obvious reason is electrical: it connects one branch at a time, so pull-up current and cable capacitance are per-branch instead of cumulative. Ten sensors daisy-chained on one bus would be over budget on both counts even if they somehow had ten addresses.</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h2>What the bed needs</h2>
+    <table>
+      <caption>The garden node, as one shopping list. The indoor Pi 5 needs nothing further.</caption>
+      <thead><tr><th class="qty">Qty</th><th>Part</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td class="qty">1</td><td><span class="what">Pi Zero 2 W — the <em>WH</em> variant</span><span class="lim">the plain board ships with the 40-pin header unpopulated</span></td><td>Rated −20 °C to +70 °C ambient, so the computer itself is fine outdoors.</td></tr>
+        <tr><td class="qty">1</td><td><span class="what">TCA9548A multiplexer</span></td><td>Addresses and wiring both. See above.</td></tr>
+        <tr><td class="qty">10+</td><td><span class="what">STEMMA soil sensors</span><span class="lim">one per plant, plus spares</span></td><td>One or two per mux channel, keeping each branch short.</td></tr>
+        <tr><td class="qty">1 ea</td><td><span class="what">BME680 and VEML7700</span></td><td>Straight onto the node's main bus at <code>0x77</code> and <code>0x10</code> — no mux channel needed, and always readable.</td></tr>
+        <tr><td class="qty">—</td><td><span class="what">A vented enclosure</span><span class="lim">radiation shield for the BME680; window or external mount for the VEML7700</span></td><td>Neither sensor can live in a sealed box: one needs air exchange, the other needs light. This is the fiddliest part of the build.</td></tr>
+        <tr><td class="qty">—</td><td><span class="what">Conformal coating or heatshrink</span></td><td>The Seesaw is not weatherproof above its sensing area. Buried under rain, it corrodes.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>What ten plants cost in calibration</h2>
+    <div class="note">
+      <h3>One soak, ten curves — not ten soaks.</h3>
+      <p>Thresholds describe a probe at a depth in a soil mix, and ten plants in one bed share all three. Run the bed once with every probe logging at the same time and you get ten drying curves in parallel; they will cluster. Set the <em>zone</em> default from the cluster and override only the plants that genuinely differ — which is exactly what DATA-5 means by a plant inheriting zone defaults where its own are unset. Ten plants is one soak, not ten.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Sequencing</h2>
+    <div class="note decided">
+      <h3>Decided: finish Phase 1 indoors first.</h3>
+      <p>Every layer gets proven on a machine you can reach and reset before anything goes in the ground. The known cost is seasonal: outdoor soil in September behaves differently from outdoor soil in June, and Phase 2 wants several weeks across varied conditions, so the calendar date the node arrives on decides which season the first outdoor record describes. Nothing stops the bed being dug, wired and enclosed in parallel — that work has no software dependency.</p>
+    </div>
+  </section>
+
+  <footer>
+    Nothing here changes Phase 1. The multiplexer is already in the layer 03 gate (SENS-4, <em>“since Seesaw offers only four addresses and the target is dozens of plants”</em>); the <code>node</code> entity is layer 02 and the ingest endpoint is layer 05. See <code>docs/BUILD-PLAN.md</code> §7a.
+  </footer>
+
+</div>

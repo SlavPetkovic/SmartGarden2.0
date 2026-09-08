@@ -1,0 +1,1097 @@
+<title>SmartGarden Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+
+<!--
+  Layer 6 design. Static mock, simulated data, no binding. The job of layer 06
+  is to make this real against the live API.
+
+  Two rules this document is built to hold, because both earlier attempts broke
+  them and everything else rests on them:
+
+    Every value on screen is one the hardware can actually produce.
+      Soil moisture is Seesaw capacitance COUNTS against that plant's
+      calibrated range, never a percentage. Light is measured lux; PPFD and DLI
+      are derived and carry their conversion factor with them. A number whose
+      provenance cannot be stated does not belong on a dashboard that people
+      trust enough to stop checking the plants themselves.
+
+    Nothing names a driver. Every element references a channel by its ROLE in a
+      zone (DATA-3, SCOPE-3). Driver, address and mux channel appear in exactly
+      one place -- the Health view, where identifying a specific piece of
+      hardware is the entire point.
+
+  Implementation notes for layer 06:
+    - The three webfonts are linked from Google here for convenience. The PWA
+      shell must be installable and work offline (UI-1), so self-host them and
+      cache them in the service worker before this ships.
+    - The hero uses a gradient rather than a photograph. A plant photo per zone
+      is a nice addition; it belongs in the database next to the zone, not
+      baked into the shell.
+-->
+
+<style>
+  /* ====================================================================
+     Tokens. Dark is the identity; light is a real mode, not an afterthought,
+     because this is read on a phone in a bright kitchen.
+
+     Semantics are kept apart on purpose: ACCENT means "interactive, or a data
+     series"; GOOD/WARN/CRIT mean "state of a living thing". Collapsing them
+     into one green is how a dashboard stops being readable at a glance.
+     ==================================================================== */
+  :root {
+    --bg:        #07160F;
+    --bg-deep:   #04100B;
+    --surface:   #0F241C;
+    --surface-2: #163327;
+    --surface-3: #1D4033;
+    --line:      #1D3B30;
+    --line-2:    #2B5546;
+
+    --ink:       #EDF5EF;
+    --ink-2:     #BFD2C7;
+    --muted:     #8CA79A;
+
+    --accent:      #57C8F5;
+    --accent-soft: #0C2C3C;
+    --good:        #58E66B;
+    --good-soft:   #0D2E18;
+    --warn:        #E8A33C;
+    --warn-soft:   #2E2413;
+    --crit:        #F0705C;
+    --crit-soft:   #331813;
+
+    --on-accent: #04212E;
+
+    --shadow: 0 1px 2px rgba(0,0,0,.5), 0 18px 40px -28px rgba(0,0,0,.95);
+    --radius: 12px;
+    --radius-sm: 8px;
+
+    --f-mark: "Fraunces", Georgia, "Times New Roman", serif;
+    --f-ui:   "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    --f-data: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  }
+
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg:        #F1F5F0;
+      --bg-deep:   #E4EBE2;
+      --surface:   #FFFFFF;
+      --surface-2: #EDF2EB;
+      --surface-3: #E2EADF;
+      --line:      #DBE3D8;
+      --line-2:    #C3D0BF;
+
+      --ink:       #12201A;
+      --ink-2:     #3F4F46;
+      --muted:     #66786D;
+
+      --accent:      #0A6E93;
+      --accent-soft: #E0EFF6;
+      --good:        #237A44;
+      --good-soft:   #E1F0E6;
+      --warn:        #9A6800;
+      --warn-soft:   #F8EEDA;
+      --crit:        #AC2314;
+      --crit-soft:   #FAE4E1;
+
+      --on-accent: #FFFFFF;
+      --shadow: 0 1px 2px rgba(18,32,26,.06), 0 14px 30px -22px rgba(18,32,26,.4);
+    }
+  }
+  :root[data-theme="light"] {
+    --bg:#F1F5F0; --bg-deep:#E4EBE2; --surface:#FFFFFF; --surface-2:#EDF2EB; --surface-3:#E2EADF;
+    --line:#DBE3D8; --line-2:#C3D0BF;
+    --ink:#12201A; --ink-2:#3F4F46; --muted:#66786D;
+    --accent:#0A6E93; --accent-soft:#E0EFF6; --good:#237A44; --good-soft:#E1F0E6;
+    --warn:#9A6800; --warn-soft:#F8EEDA; --crit:#AC2314; --crit-soft:#FAE4E1;
+    --on-accent:#FFFFFF;
+    --shadow: 0 1px 2px rgba(18,32,26,.06), 0 14px 30px -22px rgba(18,32,26,.4);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg-deep); color: var(--ink);
+    font-family: var(--f-ui); font-size: 15px; line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 5px; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+  /* ---------- preview chrome (not part of the app) ---------- */
+  .previewbar {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
+    padding: 10px 18px; border-bottom: 1px solid var(--line);
+    background: var(--surface); font-size: .78rem; color: var(--muted);
+  }
+  .previewbar strong { color: var(--ink-2); font-weight: 600; }
+  .seg { display: inline-flex; background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 2px; gap: 2px; }
+  .seg button {
+    border: 0; background: transparent; color: var(--muted); cursor: pointer;
+    padding: 4px 12px; border-radius: 6px; font-size: .78rem; font-weight: 600;
+  }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+
+  .stage { padding: 22px 16px 70px; display: flex; justify-content: center; }
+  .device { width: 100%; max-width: 1180px; transition: max-width .25s ease; }
+  .device.phone { max-width: 412px; }
+  .device .app {
+    background: var(--bg); border: 1px solid var(--line-2);
+    border-radius: 20px; overflow: hidden; box-shadow: var(--shadow);
+  }
+
+  /* ---------- shell: sidebar on desktop, tab bar on phone ---------- */
+  .shell { display: grid; grid-template-columns: 232px 1fr; min-height: 660px; }
+  .device.phone .shell { grid-template-columns: 1fr; min-height: 0; }
+
+  .sidebar {
+    background: var(--surface); border-right: 1px solid var(--line);
+    padding: 20px 14px; display: flex; flex-direction: column; gap: 4px;
+  }
+  .device.phone .sidebar { display: none; }
+  @media (max-width: 780px) { .sidebar { display: none; } .shell { grid-template-columns: 1fr; } }
+
+  .brand { display: flex; align-items: center; gap: 10px; padding: 0 8px 18px; }
+  .brand .leaf { width: 26px; height: 26px; flex: none; color: var(--good); }
+  .brand .name { font-family: var(--f-mark); font-size: 1.18rem; font-weight: 700; letter-spacing: -.015em; }
+
+  .navbtn {
+    display: flex; align-items: center; gap: 11px; width: 100%;
+    border: 0; background: transparent; cursor: pointer; text-align: left;
+    padding: 10px 12px; border-radius: 9px; color: var(--ink-2);
+    font-size: .88rem; font-weight: 500;
+  }
+  .navbtn svg { width: 18px; height: 18px; flex: none; opacity: .85; }
+  .navbtn:hover { background: var(--surface-2); color: var(--ink); }
+  .navbtn[aria-selected="true"] { background: var(--surface-3); color: var(--ink); font-weight: 600; }
+  .navbtn .badge {
+    margin-left: auto; font-family: var(--f-data); font-size: .68rem; font-weight: 600;
+    background: var(--warn-soft); color: var(--warn); padding: 1px 6px; border-radius: 5px;
+  }
+
+  .sidefoot { margin-top: auto; padding: 14px 10px 0; border-top: 1px solid var(--line); font-size: .74rem; color: var(--muted); }
+  .sidefoot .k { display: flex; align-items: center; gap: 7px; color: var(--ink-2); font-weight: 600; margin-bottom: 4px; }
+  .sidefoot .v { font-family: var(--f-data); font-size: .72rem; }
+
+  .main { min-width: 0; display: flex; flex-direction: column; }
+
+  /* ---------- hero ---------- */
+  .hero {
+    position: relative; padding: 26px 22px 22px;
+    background:
+      radial-gradient(120% 140% at 88% -10%, rgba(88,230,107,.16) 0%, rgba(88,230,107,0) 55%),
+      radial-gradient(90% 120% at 10% 110%, rgba(87,200,245,.12) 0%, rgba(87,200,245,0) 60%),
+      linear-gradient(160deg, var(--surface-2) 0%, var(--surface) 62%, var(--bg) 100%);
+    border-bottom: 1px solid var(--line);
+  }
+  .device.phone .hero { padding: 20px 16px 18px; }
+  .herotop { display: flex; align-items: flex-start; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  /* The greeting shrinks rather than pushing the unit toggle onto its own
+     orphaned line on a narrow phone. */
+  .herotop > .greetblock { flex: 1 1 200px; min-width: 0; }
+  .greeting { font-family: var(--f-mark); font-size: 1.72rem; font-weight: 600; letter-spacing: -.02em; margin: 0; }
+  .device.phone .greeting { font-size: 1.44rem; }
+  .subgreet { color: var(--muted); font-size: .82rem; margin-top: 2px; }
+  .herotop .spacer { flex: 1 1 auto; }
+  .phonebrand { display: none; align-items: center; gap: 9px; margin-bottom: 12px; }
+  .device.phone .phonebrand { display: flex; }
+  @media (max-width: 780px) { .phonebrand { display: flex; } }
+  .phonebrand .leaf { width: 22px; height: 22px; color: var(--good); }
+  .phonebrand .name { font-family: var(--f-mark); font-size: 1.05rem; font-weight: 700; }
+
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: .72rem; font-weight: 600; padding: 3px 10px; border-radius: 999px; white-space: nowrap;
+  }
+  .pill.good { background: var(--good-soft); color: var(--good); }
+  .pill.warn { background: var(--warn-soft); color: var(--warn); }
+  .pill.crit { background: var(--crit-soft); color: var(--crit); }
+  .pill.info { background: var(--accent-soft); color: var(--accent); }
+  .pill .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex: none; }
+
+  .unitbtn {
+    border: 1px solid var(--line-2); background: var(--surface); border-radius: 8px;
+    padding: 4px 10px; font-size: .74rem; font-weight: 600; cursor: pointer;
+    font-family: var(--f-data); color: var(--ink-2);
+  }
+  .unitbtn:hover { border-color: var(--muted); color: var(--ink); }
+
+  /* ---------- zone condition tiles ---------- */
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  @media (max-width: 900px) { .tiles { grid-template-columns: repeat(2, 1fr); } }
+  .device.phone .tiles { grid-template-columns: repeat(2, 1fr); }
+
+  .tile {
+    background: color-mix(in srgb, var(--surface) 80%, transparent);
+    border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 12px 13px; display: flex; gap: 11px; align-items: flex-start;
+  }
+  .tile .ico {
+    width: 32px; height: 32px; flex: none; border-radius: 9px;
+    display: grid; place-items: center; background: var(--surface-3); color: var(--accent);
+  }
+  .tile .ico svg { width: 17px; height: 17px; }
+  .tile .k { font-size: .7rem; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; }
+  .tile .v { font-family: var(--f-data); font-size: 1.12rem; font-weight: 500; font-variant-numeric: tabular-nums; margin-top: 1px; }
+  .tile .v .u { font-size: .7rem; color: var(--muted); margin-left: 3px; font-weight: 400; }
+  .tile .note { font-size: .68rem; color: var(--muted); margin-top: 2px; }
+
+  /* ---------- panels ---------- */
+  .panel { padding: 20px 22px 26px; display: none; }
+  .panel.active { display: block; }
+  .device.phone .panel { padding: 16px 16px 22px; }
+
+  .sectionlabel {
+    font-size: .68rem; font-weight: 600; letter-spacing: .11em; text-transform: uppercase;
+    color: var(--muted); margin: 24px 0 10px;
+  }
+  .sectionlabel:first-child { margin-top: 0; }
+
+  .banner {
+    display: flex; gap: 11px; align-items: flex-start;
+    background: var(--warn-soft); border: 1px solid color-mix(in srgb, var(--warn) 26%, transparent);
+    border-radius: var(--radius); padding: 12px 14px; margin-bottom: 16px;
+    font-size: .82rem; color: var(--ink-2);
+  }
+  .banner .ico { color: var(--warn); font-weight: 700; font-family: var(--f-data); flex: none; }
+  .banner b { color: var(--ink); }
+
+  .grid { display: grid; gap: 12px; grid-template-columns: 1fr; }
+  @media (min-width: 900px) { .device:not(.phone) .grid.two { grid-template-columns: 1fr 1fr; } }
+
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 15px; }
+  .card.lift { box-shadow: var(--shadow); }
+
+  .cardhead { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px; }
+  .cardhead h3 { margin: 0; font-size: 1rem; font-weight: 600; letter-spacing: -.008em; }
+  .cardhead .sub { font-size: .74rem; color: var(--muted); margin-top: 2px; }
+  .cardhead .spacer { flex: 1; }
+
+  /* ---------- moisture meter ---------- */
+  .meter { margin: 4px 0 13px; }
+  .meterrow { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+  .bignum { font-family: var(--f-data); font-size: 2rem; font-weight: 500; letter-spacing: -.025em; font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .bignum.stale { color: var(--muted); }
+  .unit { font-size: .74rem; color: var(--muted); }
+  .delta { font-size: .76rem; color: var(--muted); margin-left: auto; font-family: var(--f-data); }
+
+  .track { position: relative; height: 9px; background: var(--surface-2); border-radius: 5px; overflow: hidden; }
+  .track .band { position: absolute; top: 0; bottom: 0; background: var(--good-soft); }
+  .track .fill { position: absolute; top: 0; bottom: 0; left: 0; background: var(--accent); border-radius: 5px 0 0 5px; }
+  .track .fill.stale { background: var(--line-2); }
+  .ticks { display: flex; justify-content: space-between; font-family: var(--f-data); font-size: .66rem; color: var(--muted); margin-top: 5px; }
+
+  .kvs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; border-top: 1px solid var(--line); padding-top: 12px; }
+  .kv .k { font-size: .67rem; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+  .kv .v { font-family: var(--f-data); font-size: .86rem; font-variant-numeric: tabular-nums; margin-top: 1px; }
+
+  .actions { display: flex; gap: 8px; margin-top: 13px; }
+  .btn {
+    flex: 1; border: 1px solid var(--line-2); background: var(--surface-2); cursor: pointer;
+    padding: 10px 12px; border-radius: var(--radius-sm); font-size: .8rem; font-weight: 600;
+  }
+  .btn:hover { background: var(--surface-3); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+  .btn.primary:hover { filter: brightness(1.08); }
+  .guardnote { font-size: .7rem; color: var(--muted); margin-top: 7px; text-align: center; }
+
+  /* ---------- grow light ---------- */
+  .dlirow { display: flex; align-items: flex-start; gap: 16px; }
+  @media (max-width: 520px) { .dlirow { flex-direction: column; gap: 12px; } }
+  .ring { flex: none; }
+  .ring .bgarc { stroke: var(--surface-2); }
+  .ring .fgarc { stroke: var(--warn); stroke-linecap: round; }
+  .ring .lbl { font-family: var(--f-data); font-size: 15px; font-weight: 600; fill: var(--ink); }
+  .ring .sub { font-family: var(--f-data); font-size: 8.5px; fill: var(--muted); }
+  .dlitext { font-size: .82rem; color: var(--ink-2); }
+  .dlitext b { color: var(--ink); }
+
+  .photoperiod { margin-top: 14px; padding-top: 13px; border-top: 1px solid var(--line); }
+  .pbar { position: relative; height: 26px; background: var(--surface-2); border-radius: var(--radius-sm); overflow: hidden; }
+  .pbar .window { position: absolute; top: 0; bottom: 0; background: color-mix(in srgb, var(--warn) 18%, transparent); }
+  .pbar .lit { position: absolute; top: 0; bottom: 0; background: color-mix(in srgb, var(--warn) 42%, transparent); }
+  .pbar .now { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--ink); }
+  .pbar .lab { position: absolute; top: 50%; transform: translateY(-50%); font-family: var(--f-data); font-size: .64rem; color: var(--ink-2); padding: 0 6px; white-space: nowrap; }
+  /* Too narrow for an in-bar label; the footnote below carries the same words. */
+  .device.phone .pbar .lab { display: none; }
+  @media (max-width: 640px) { .pbar .lab { display: none; } }
+  .plegend { display: flex; justify-content: space-between; font-family: var(--f-data); font-size: .64rem; color: var(--muted); margin-top: 5px; }
+
+  /* ---------- charts ---------- */
+  .chartwrap { overflow-x: auto; }
+  .chart { display: block; width: 100%; height: auto; touch-action: pan-y; }
+  .chart .axis { stroke: var(--line-2); stroke-width: 1; }
+  .chart .gridline { stroke: var(--line); stroke-width: 1; stroke-dasharray: 2 4; }
+  .chart .tick { font-family: var(--f-data); font-size: 9.5px; fill: var(--muted); }
+  .chart .bandfill { fill: var(--good); opacity: .10; }
+  .chart .bandedge { stroke: var(--good); stroke-width: 1; stroke-dasharray: 3 3; opacity: .5; }
+  .chart .series { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .chart .areafill { fill: var(--accent); opacity: .09; }
+  .chart .evt { fill: var(--accent); }
+  .chart .evtline { stroke: var(--accent); stroke-width: 1; stroke-dasharray: 2 3; opacity: .45; }
+  .chart .crosshair { stroke: var(--ink-2); stroke-width: 1; opacity: .5; }
+  .chart .cursordot { fill: var(--accent); stroke: var(--surface); stroke-width: 2; }
+  .chart .endlabel { font-family: var(--f-data); font-size: 10px; font-weight: 600; fill: var(--accent); }
+
+  .chartbox { position: relative; }
+  .tip {
+    position: absolute; pointer-events: none; z-index: 10;
+    background: var(--surface-2); border: 1px solid var(--line-2); border-radius: 8px;
+    padding: 7px 10px; box-shadow: var(--shadow); font-size: .74rem; white-space: nowrap;
+    opacity: 0; transition: opacity .09s;
+  }
+  .tip .t { font-family: var(--f-data); color: var(--muted); font-size: .68rem; }
+  .tip .v { font-family: var(--f-data); font-weight: 600; font-size: .84rem; }
+
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chips button {
+    border: 1px solid var(--line-2); background: var(--surface); cursor: pointer;
+    padding: 5px 12px; border-radius: 999px; font-size: .74rem; font-weight: 600;
+    color: var(--muted); font-family: var(--f-data);
+  }
+  .chips button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+
+  /* ---------- rows / feed ---------- */
+  .rows { border-top: 1px solid var(--line); }
+  .row { display: flex; align-items: center; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--line); }
+  .row .name { font-weight: 600; font-size: .85rem; }
+  .row .meta { font-family: var(--f-data); font-size: .71rem; color: var(--muted); margin-top: 1px; }
+  .row .spacer { flex: 1; }
+
+  .feed { border-top: 1px solid var(--line); }
+  .entry { display: grid; grid-template-columns: 68px 1fr; gap: 12px; padding: 13px 0; border-bottom: 1px solid var(--line); }
+  .entry .when { font-family: var(--f-data); font-size: .72rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .entry .what { min-width: 0; }
+  .entry .head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+  .entry .who { font-family: var(--f-data); font-size: .7rem; color: var(--muted); }
+  .entry .reason { font-size: .82rem; color: var(--ink-2); }
+  .entry .reason b { color: var(--ink); font-weight: 600; }
+
+  .footnote { font-size: .75rem; color: var(--muted); margin-top: 12px; }
+
+  /* ---------- mobile tab bar ---------- */
+  .tabbar {
+    display: none; border-top: 1px solid var(--line); background: var(--surface);
+    padding: 7px 4px calc(7px + env(safe-area-inset-bottom));
+  }
+  .device.phone .tabbar { display: grid; grid-template-columns: repeat(4, 1fr); }
+  @media (max-width: 780px) { .tabbar { display: grid; grid-template-columns: repeat(4, 1fr); } }
+  .tabbar button {
+    border: 0; background: transparent; cursor: pointer; color: var(--muted);
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    padding: 6px 2px; font-size: .67rem; font-weight: 600; position: relative;
+  }
+  .tabbar button svg { width: 19px; height: 19px; }
+  .tabbar button[aria-selected="true"] { color: var(--good); }
+  .tabbar .badge {
+    position: absolute; top: 2px; right: 50%; margin-right: -18px;
+    font-family: var(--f-data); font-size: .58rem; font-weight: 700;
+    background: var(--warn); color: var(--bg-deep);
+    min-width: 14px; height: 14px; border-radius: 7px; display: grid; place-items: center; padding: 0 3px;
+  }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 26px; transform: translate(-50%, 14px);
+    background: var(--ink); color: var(--bg-deep); padding: 11px 17px; border-radius: 9px;
+    font-size: .82rem; font-weight: 500; box-shadow: var(--shadow); z-index: 50;
+    opacity: 0; pointer-events: none; transition: opacity .18s, transform .18s; max-width: 90vw;
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+</style>
+
+<div class="previewbar">
+  <strong>Layer 6 design</strong>
+  <span>Simulated data &middot; Sunday 7 September, 17:00</span>
+  <span style="flex:1"></span>
+  <span>Viewport</span>
+  <span class="seg" role="group" aria-label="Preview viewport">
+    <button id="vw-phone" aria-pressed="true">Phone</button>
+    <button id="vw-desk" aria-pressed="false">Desktop</button>
+  </span>
+  <span>Theme</span>
+  <span class="seg" role="group" aria-label="Preview theme">
+    <button id="th-dark" aria-pressed="true">Dark</button>
+    <button id="th-light" aria-pressed="false">Light</button>
+  </span>
+</div>
+
+<div class="stage">
+<div class="device phone" id="device">
+<div class="app">
+<div class="shell">
+
+  <!-- ================= SIDEBAR (desktop) ================= -->
+  <aside class="sidebar">
+    <div class="brand">
+      <svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+        <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/>
+        <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>
+      </svg>
+      <span class="name">SmartGarden</span>
+    </div>
+
+    <button class="navbtn" role="tab" aria-selected="true" data-tab="plants">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 22c0-6 3-9 8-10-1 6-4 9-8 10Z"/><path d="M12 22c0-6-3-9-8-10 1 6 4 9 8 10Z"/><path d="M12 22V11"/></svg>
+      Plants
+    </button>
+    <button class="navbtn" role="tab" aria-selected="false" data-tab="history">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 14l4-5 3 3 5-7"/></svg>
+      History
+    </button>
+    <button class="navbtn" role="tab" aria-selected="false" data-tab="health">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M22 12h-4l-3 8-4-16-3 8H2"/></svg>
+      Health <span class="badge">1</span>
+    </button>
+    <button class="navbtn" role="tab" aria-selected="false" data-tab="log">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+      Log
+    </button>
+
+    <div class="sidefoot">
+      <div class="k"><span class="pill good" style="padding:2px 7px"><span class="dot"></span>Live</span></div>
+      <div class="v">pi-local &middot; 4s ago</div>
+      <div class="v" style="margin-top:3px">control up 6d 4h</div>
+    </div>
+  </aside>
+
+  <div class="main">
+
+  <!-- ================= HERO ================= -->
+  <header class="hero">
+    <div class="phonebrand">
+      <svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+        <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/>
+        <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>
+      </svg>
+      <span class="name">SmartGarden</span>
+      <span style="flex:1"></span>
+      <span class="pill good"><span class="dot"></span>Live</span>
+    </div>
+
+    <div class="herotop">
+      <div class="greetblock">
+        <h1 class="greeting">Good evening, Slav</h1>
+        <div class="subgreet">Kitchen windowsill &middot; two plants &middot; one thing needs a look</div>
+      </div>
+      <span class="spacer"></span>
+      <button class="unitbtn" id="unit">&deg;C</button>
+    </div>
+
+    <div class="tiles">
+      <div class="tile">
+        <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M14 4v10.5a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/></svg></span>
+        <div>
+          <div class="k">Air temp</div>
+          <div class="v" data-temp="23.6">23.6<span class="u">&deg;C</span></div>
+        </div>
+      </div>
+      <div class="tile">
+        <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 2.7 6.5 11a6.5 6.5 0 1 0 11 0Z"/></svg></span>
+        <div>
+          <div class="k">Humidity</div>
+          <div class="v">44<span class="u">%</span></div>
+        </div>
+      </div>
+      <div class="tile">
+        <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 17c3-6 6-9 9-9s6 3 9 9"/><path d="M12 8V3"/></svg></span>
+        <div>
+          <div class="k">VPD</div>
+          <div class="v">1.62<span class="u">kPa</span></div>
+          <div class="note">drives transpiration</div>
+        </div>
+      </div>
+      <div class="tile">
+        <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg></span>
+        <div>
+          <div class="k">Light</div>
+          <div class="v">2 282<span class="u">lux</span></div>
+          <div class="note">measured &middot; 42 &micro;mol derived</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ================= PLANTS ================= -->
+  <section class="panel active" data-panel="plants">
+
+    <div class="banner">
+      <span class="ico">!</span>
+      <div><b>Boston fern's soil sensor has gone quiet.</b> Last reading 26 minutes ago;
+      it reports every 60 seconds. Its moisture value is being ignored rather than trusted,
+      so the fern is not being watered automatically.</div>
+    </div>
+
+    <div class="grid two">
+
+      <!-- Monstera -->
+      <article class="card lift">
+        <div class="cardhead">
+          <div>
+            <h3>Monstera</h3>
+            <div class="sub">Monstera deliciosa &middot; left of the sink</div>
+          </div>
+          <span class="spacer"></span>
+          <span class="pill good"><span class="dot"></span>Healthy</span>
+        </div>
+
+        <div class="meter">
+          <div class="meterrow">
+            <span class="bignum">727</span>
+            <span class="unit">counts</span>
+            <span class="delta">&minus;9.4 / h</span>
+          </div>
+          <div class="track">
+            <div class="band" style="left:24%; right:8%"></div>
+            <div class="fill" style="width:60.6%"></div>
+          </div>
+          <div class="ticks"><span>300</span><span>630 &middot; 900</span><span>1400</span></div>
+        </div>
+
+        <div class="kvs">
+          <div class="kv"><div class="k">Soil temp</div><div class="v" data-temp="21.4">21.4 &deg;C</div></div>
+          <div class="kv"><div class="k">Last watered</div><div class="v">08:30 &middot; 6.0s</div></div>
+          <div class="kv"><div class="k">Next check</div><div class="v">in 47s</div></div>
+          <div class="kv"><div class="k">Reaches 630 in</div><div class="v">~10h</div></div>
+        </div>
+
+        <div class="actions">
+          <button class="btn primary" data-water="Monstera">Water 6.0s</button>
+          <button class="btn" data-detail="Monstera">History</button>
+        </div>
+        <div class="guardnote">Manual actions pass the same guards as automatic ones.</div>
+      </article>
+
+      <!-- Fern -->
+      <article class="card lift">
+        <div class="cardhead">
+          <div>
+            <h3>Boston fern</h3>
+            <div class="sub">Nephrolepis exaltata &middot; right of the sink</div>
+          </div>
+          <span class="spacer"></span>
+          <span class="pill warn"><span class="dot"></span>Sensor stale</span>
+        </div>
+
+        <div class="meter">
+          <div class="meterrow">
+            <span class="bignum stale">1011</span>
+            <span class="unit">counts &middot; 26 min old</span>
+          </div>
+          <div class="track">
+            <div class="band" style="left:47%; right:0%"></div>
+            <div class="fill stale" style="width:64.6%"></div>
+          </div>
+          <div class="ticks"><span>300</span><span>820 &middot; 1140</span><span>1400</span></div>
+        </div>
+
+        <div class="kvs">
+          <div class="kv"><div class="k">Soil temp</div><div class="v" data-temp="21.1">21.1 &deg;C</div></div>
+          <div class="kv"><div class="k">Last watered</div><div class="v">13:00 &middot; 7.0s</div></div>
+          <div class="kv"><div class="k">Automation</div><div class="v">paused</div></div>
+          <div class="kv"><div class="k">Reading age</div><div class="v">26 min &middot; window 60s</div></div>
+        </div>
+
+        <div class="actions">
+          <button class="btn primary" data-water="Boston fern">Water 7.0s</button>
+          <button class="btn" data-detail="Boston fern">History</button>
+        </div>
+        <div class="guardnote">Manual actions pass the same guards as automatic ones.</div>
+      </article>
+    </div>
+
+    <div class="sectionlabel">Grow light</div>
+    <div class="card">
+      <div class="dlirow">
+        <svg class="ring" width="92" height="92" viewBox="0 0 86 86" role="img"
+             aria-label="Daily light integral: 3.96 of 6.00 moles per square metre, 66 percent of target">
+          <circle class="bgarc" cx="43" cy="43" r="34" fill="none" stroke-width="9"/>
+          <circle class="fgarc" cx="43" cy="43" r="34" fill="none" stroke-width="9"
+                  stroke-dasharray="213.6" stroke-dashoffset="72.6"
+                  transform="rotate(-90 43 43)"/>
+          <text class="lbl" x="43" y="42" text-anchor="middle">3.96</text>
+          <text class="sub" x="43" y="55" text-anchor="middle">of 6.00</text>
+        </svg>
+        <div class="dlitext">
+          <div style="margin-bottom:7px"><span class="pill warn"><span class="dot"></span>Supplementing</span></div>
+          <b>On since 17:00.</b> Needs about <b>2h 35m</b> more at 220 &micro;mol to reach the
+          monstera's daily target before the photoperiod closes at 20:00.
+          <div class="footnote" style="margin-top:8px">
+            One fixture serves the zone, so it runs to satisfy the thirstiest plant.
+            The fern passed its 4.00 target at 16:45.
+          </div>
+        </div>
+      </div>
+
+      <div class="photoperiod">
+        <div class="pbar" role="img" aria-label="Photoperiod 06:00 to 20:00. Grow light on from 17:00. Now 17:00.">
+          <div class="window" style="left:25%; right:16.7%"></div>
+          <div class="lit" style="left:70.8%; right:16.7%"></div>
+          <div class="now" style="left:70.8%"></div>
+          <span class="lab" style="left:26%">photoperiod 06:00&ndash;20:00</span>
+        </div>
+        <div class="plegend"><span>00:00</span><span>now 17:00</span><span>24:00</span></div>
+        <div class="footnote" style="margin-top:7px">Photoperiod 06:00&ndash;20:00. The lamp
+        supplements against a projected end-of-day shortfall, not against a lux threshold,
+        so a passing cloud does not switch it on.</div>
+      </div>
+    </div>
+
+    <div class="sectionlabel">Today's water</div>
+    <div class="card">
+      <div class="meterrow" style="margin-bottom:9px">
+        <span class="bignum">13.0</span><span class="unit">of 120s budget</span>
+        <span class="delta">2 pulses</span>
+      </div>
+      <div class="track"><div class="fill" style="width:10.8%"></div></div>
+      <div class="ticks"><span>0s</span><span>daily zone budget</span><span>120s</span></div>
+      <div class="footnote">The budget is a ceiling, not a target. A guard may shorten a pulse
+      or refuse it; nothing can lengthen one.</div>
+    </div>
+  </section>
+
+  <!-- ================= HISTORY ================= -->
+  <section class="panel" data-panel="history">
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:15px; flex-wrap:wrap">
+      <span class="chips" role="group" aria-label="Time range">
+        <button aria-pressed="false">6h</button>
+        <button aria-pressed="true">24h</button>
+        <button aria-pressed="false">7d</button>
+        <button aria-pressed="false">30d</button>
+      </span>
+      <span style="flex:1"></span>
+      <span class="pill info">15 min resolution</span>
+    </div>
+
+    <div class="card lift">
+      <div class="cardhead">
+        <div><h3>Monstera soil moisture</h3>
+        <div class="sub">Capacitance counts &middot; target band 630&ndash;900</div></div>
+      </div>
+      <div class="chartbox">
+        <div class="chartwrap"><svg class="chart" id="chart-m" viewBox="0 0 660 210" role="img"
+          aria-label="Monstera soil moisture over 17 hours: a steady decline from 688 to 626 counts overnight, a sharp rise to 915 after a 6 second watering at 08:30, then a decline to 727 by 17:00."></svg></div>
+        <div class="tip" id="tip-m"></div>
+      </div>
+      <div class="footnote">&#9650; marks an irrigation pulse. The shaded band is the plant's target range.</div>
+    </div>
+
+    <div class="card lift" style="margin-top:12px">
+      <div class="cardhead">
+        <div><h3>Boston fern soil moisture</h3>
+        <div class="sub">Capacitance counts &middot; target band 820&ndash;1140</div></div>
+        <span class="spacer"></span>
+        <span class="pill warn"><span class="dot"></span>Stale since 16:34</span>
+      </div>
+      <div class="chartbox">
+        <div class="chartwrap"><svg class="chart" id="chart-f" viewBox="0 0 660 210" role="img"
+          aria-label="Boston fern soil moisture over 17 hours: decline from 1010 to 817 counts, a rise to 1140 after a 7 second watering at 13:00, then decline to 1011 where the trace stops because the sensor went quiet."></svg></div>
+        <div class="tip" id="tip-f"></div>
+      </div>
+      <div class="footnote">The trace stops at the last 15-minute bucket that had readings
+      in it, 16:30. The card shows the last individual reading, 16:34 &mdash; a different
+      tier, so a different number. Neither is carried forward, because a flat line here
+      would look exactly like a plant whose moisture had levelled off.</div>
+    </div>
+
+    <div class="card lift" style="margin-top:12px">
+      <div class="cardhead">
+        <div><h3>Light</h3>
+        <div class="sub">Measured illuminance &middot; the day's integral reached 3.96 mol</div></div>
+      </div>
+      <div class="chartbox">
+        <div class="chartwrap"><svg class="chart" id="chart-l" viewBox="0 0 660 210" role="img"
+          aria-label="Illuminance rising from darkness at 06:30 to about 9200 lux at 12:30 and falling to 2282 lux by 17:00, with the accumulated daily light integral reaching 3.96 moles."></svg></div>
+        <div class="tip" id="tip-l"></div>
+      </div>
+      <div class="footnote">Charted in lux, because lux is what the sensor reports. PPFD and DLI
+      are derived using the factor recorded with each reading &mdash; currently 0.0185
+      &micro;mol&middot;m&#8315;&sup2;&middot;s&#8315;&sup1; per lux, which is a daylight
+      figure. Under the grow light it is materially different, and the derived values
+      are only as good as that number.</div>
+    </div>
+  </section>
+
+  <!-- ================= HEALTH ================= -->
+  <section class="panel" data-panel="health">
+    <div class="sectionlabel">Nodes</div>
+    <div class="card">
+      <div class="rows">
+        <div class="row" style="border-top:0">
+          <div><div class="name">pi-local</div><div class="meta">Raspberry Pi 5 &middot; onboard I2C</div></div>
+          <span class="spacer"></span>
+          <span class="pill good"><span class="dot"></span>Online &middot; 4s ago</span>
+        </div>
+      </div>
+      <div class="footnote">A node is marked offline when nothing has arrived within its
+      declared reporting window, rather than showing its last value as if it were current.</div>
+    </div>
+
+    <div class="sectionlabel">Sensors</div>
+    <div class="card">
+      <div class="rows">
+        <div class="row" style="border-top:0">
+          <div><div class="name">air-1</div><div class="meta">bme680 &middot; 0x77 &middot; every 10s</div></div>
+          <span class="spacer"></span>
+          <span class="pill good"><span class="dot"></span>OK</span>
+        </div>
+        <div class="row">
+          <div><div class="name">light-1</div><div class="meta">veml7700 &middot; 0x10 &middot; gain 1/8 &middot; 100ms &middot; every 10s</div></div>
+          <span class="spacer"></span>
+          <span class="pill good"><span class="dot"></span>OK</span>
+        </div>
+        <div class="row">
+          <div><div class="name">soil-monstera</div><div class="meta">seesaw_soil &middot; 0x36 &middot; every 60s &middot; 2 retries today</div></div>
+          <span class="spacer"></span>
+          <span class="pill good"><span class="dot"></span>OK</span>
+        </div>
+        <div class="row" style="border-bottom:0">
+          <div><div class="name">soil-fern</div><div class="meta">seesaw_soil &middot; 0x36 mux 1 &middot; 41 consecutive failures</div></div>
+          <span class="spacer"></span>
+          <span class="pill warn"><span class="dot"></span>No response</span>
+        </div>
+      </div>
+      <div class="footnote">This is the only view that names a driver, an address or a mux
+      channel. Everywhere else a channel is referenced by its role in a zone, so a sensor
+      can be replaced or moved without touching a rule.</div>
+    </div>
+
+    <div class="sectionlabel">Services</div>
+    <div class="card">
+      <div class="kvs" style="border-top:0; padding-top:0">
+        <div class="kv"><div class="k">smartgarden-control</div><div class="v">up 6d 4h</div></div>
+        <div class="kv"><div class="k">smartgarden-web</div><div class="v">up 6d 4h</div></div>
+        <div class="kv"><div class="k">Loop tick</div><div class="v">10.0s &middot; 0 overruns</div></div>
+        <div class="kv"><div class="k">Watchdog</div><div class="v">armed &middot; 0 force-offs</div></div>
+        <div class="kv"><div class="k">Database</div><div class="v">84 MB</div></div>
+        <div class="kv"><div class="k">Disk free</div><div class="v">221 of 234 GB</div></div>
+        <div class="kv"><div class="k">Last backup</div><div class="v">03:00 &middot; ok</div></div>
+        <div class="kv"><div class="k">Readings today</div><div class="v">41 208</div></div>
+      </div>
+      <div class="footnote">Two units, not one. The web service can be restarted or redeployed
+      without the control loop noticing.</div>
+    </div>
+  </section>
+
+  <!-- ================= LOG ================= -->
+  <section class="panel" data-panel="log">
+    <div class="footnote" style="margin:0 0 14px">
+      Every tick writes what it decided and why. This is the same text an alert would carry.
+    </div>
+    <div class="feed">
+      <div class="entry">
+        <div class="when">17:00:04</div>
+        <div class="what">
+          <div class="head"><span class="pill info">Light on</span><span class="who">windowsill</span></div>
+          <div class="reason">Daily light integral <b>3.96 of 6.00 mol</b>. About 2h 35m of
+          supplement needed at 220 &micro;mol; 3h of photoperiod remaining.</div>
+        </div>
+      </div>
+      <div class="entry">
+        <div class="when">16:45:04</div>
+        <div class="what">
+          <div class="head"><span class="pill warn">No action</span><span class="who">windowsill / fern</span></div>
+          <div class="reason">Soil reading is <b>11 minutes old</b> and the sensor declares a
+          60 second window. Value ignored rather than trusted.</div>
+        </div>
+      </div>
+      <div class="entry">
+        <div class="when">13:05:12</div>
+        <div class="what">
+          <div class="head"><span class="pill crit">Blocked</span><span class="who">windowsill / fern</span></div>
+          <div class="reason">Manual watering requested from the dashboard. <b>Cooldown active</b>,
+          10 minutes remaining. Manual actions pass the same guards as automatic ones.</div>
+        </div>
+      </div>
+      <div class="entry">
+        <div class="when">13:00:02</div>
+        <div class="what">
+          <div class="head"><span class="pill good">Watered 7.0s</span><span class="who">windowsill / fern</span></div>
+          <div class="reason">Soil <b>817</b> below low threshold 820. Budget after pulse:
+          13.0s of 120s. Settling until 13:10.</div>
+        </div>
+      </div>
+      <div class="entry">
+        <div class="when">11:30:03</div>
+        <div class="what">
+          <div class="head"><span class="pill good">No action</span><span class="who">windowsill / monstera</span></div>
+          <div class="reason">Soil <b>866</b> within band 630&ndash;900, drying at 9.4 counts/h.
+          Threshold not reached for about 25h.</div>
+        </div>
+      </div>
+      <div class="entry">
+        <div class="when">08:30:02</div>
+        <div class="what">
+          <div class="head"><span class="pill good">Watered 6.0s</span><span class="who">windowsill / monstera</span></div>
+          <div class="reason">Soil <b>626</b> below low threshold 630. Settling until 08:40.</div>
+        </div>
+      </div>
+      <div class="entry">
+        <div class="when">Sat 21:14</div>
+        <div class="what">
+          <div class="head"><span class="pill crit">Blocked</span><span class="who">windowsill / monstera</span></div>
+          <div class="reason">Soil <b>628</b> below low threshold 630, but the time is
+          <b>outside the watering window</b> (07:00&ndash;21:00). Deferred to morning.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  </div><!-- /main -->
+</div><!-- /shell -->
+
+  <!-- ================= TAB BAR (phone) ================= -->
+  <nav class="tabbar" role="tablist" aria-label="Sections">
+    <button role="tab" aria-selected="true" data-tab="plants">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 22c0-6 3-9 8-10-1 6-4 9-8 10Z"/><path d="M12 22c0-6-3-9-8-10 1 6 4 9 8 10Z"/><path d="M12 22V11"/></svg>
+      Plants
+    </button>
+    <button role="tab" aria-selected="false" data-tab="history">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 14l4-5 3 3 5-7"/></svg>
+      History
+    </button>
+    <button role="tab" aria-selected="false" data-tab="health">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M22 12h-4l-3 8-4-16-3 8H2"/></svg>
+      Health<span class="badge">1</span>
+    </button>
+    <button role="tab" aria-selected="false" data-tab="log">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+      Log
+    </button>
+  </nav>
+
+</div><!-- /app -->
+</div><!-- /device -->
+</div><!-- /stage -->
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* Simulated series, 00:00 -> 17:00, one sample per 15 minutes. Soil is in
+     Seesaw capacitance counts, light in lux -- the units the hardware reports.
+     The narrative is deliberate: the monstera dries and is watered at 08:30;
+     the fern is watered at 13:00 and its sensor then goes quiet at 16:34, so
+     its trace stops rather than being extrapolated. */
+  const M = [688.1,686.2,684.5,682.7,681.0,679.4,677.8,676.2,674.7,673.1,671.6,670.1,668.6,667.1,665.5,664.0,662.5,660.9,659.3,657.6,655.9,654.2,652.4,650.6,648.7,646.7,644.6,642.4,640.0,637.5,634.9,632.0,629.1,625.9,914.6,911.1,907.4,903.6,899.6,895.4,891.0,886.5,881.8,876.9,871.8,866.6,861.2,855.7,850.0,844.2,838.3,832.3,826.2,820.0,813.7,807.3,801.0,794.6,788.2,781.8,775.4,769.0,762.8,756.5,750.4,744.4,738.5,732.7,727.0];
+  const F = [1009.5,1007.1,1004.8,1002.5,1000.3,998.1,996.0,994.0,991.9,989.9,987.9,986.0,984.0,982.0,980.0,978.0,976.0,973.9,971.8,969.7,967.5,965.2,962.9,960.4,957.9,955.4,952.6,949.7,946.7,943.4,939.9,936.3,932.4,928.3,924.0,919.5,914.7,909.7,904.5,899.1,893.4,887.5,881.4,875.1,868.5,861.7,854.8,847.6,840.3,832.7,825.1,817.3,1140.3,1132.3,1124.1,1115.9,1107.6,1099.3,1091.0,1082.7,1074.4,1066.1,1057.9,1049.9,1041.9,1034.0,1026.3,1018.8,null,null];
+  const L = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,18,149,372,667,1025,1436,1891,2383,2902,3442,3994,4550,5104,5647,6173,6674,7144,7578,7969,8313,8605,8842,9020,9139,9195,9189,9120,8989,8799,8551,8248,7894,7494,7053,6576,6069,5540,4994,4439,3883,3333,2796,2282];
+
+  const clock = i => {
+    const m = i * 15, h = Math.floor(m / 60);
+    return String(h).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
+  };
+
+  // ---------- chart drawing ----------
+  const W = 660, H = 210, PAD = { t: 14, r: 46, b: 26, l: 46 };
+  const plotW = W - PAD.l - PAD.r, plotH = H - PAD.t - PAD.b;
+
+  function niceTicks(lo, hi, count) {
+    const span = hi - lo, raw = span / count;
+    const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    const step = [1, 2, 2.5, 5, 10].map(m => m * mag).find(s => s >= raw) || 10 * mag;
+    const out = [];
+    for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) out.push(v);
+    return out;
+  }
+
+  function svgEl(tag, attrs, text) {
+    const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    for (const k in attrs) el.setAttribute(k, attrs[k]);
+    if (text != null) el.textContent = text;
+    return el;
+  }
+
+  /* One scale places marks, ticks and labels; every label names a value the
+     chart actually reaches. Single series, so no legend -- the title names it. */
+  function drawChart(svg, opts) {
+    const { data, band, events, fmt, tipEl, lastLabel } = opts;
+    const values = data.filter(v => v != null);
+    let lo = Math.min.apply(null, values), hi = Math.max.apply(null, values);
+    if (band) { lo = Math.min(lo, band[0]); hi = Math.max(hi, band[1]); }
+    const pad = (hi - lo) * 0.12 || 1;
+    lo -= pad; hi += pad;
+
+    const x = i => PAD.l + (i / (data.length - 1)) * plotW;
+    const y = v => PAD.t + plotH - ((v - lo) / (hi - lo)) * plotH;
+
+    svg.textContent = "";
+
+    if (band) {
+      svg.appendChild(svgEl("rect", {
+        class: "bandfill", x: PAD.l, y: y(band[1]),
+        width: plotW, height: Math.max(0, y(band[0]) - y(band[1]))
+      }));
+      [band[0], band[1]].forEach(v => svg.appendChild(svgEl("line", {
+        class: "bandedge", x1: PAD.l, x2: PAD.l + plotW, y1: y(v), y2: y(v)
+      })));
+    }
+
+    niceTicks(lo, hi, 4).forEach(v => {
+      svg.appendChild(svgEl("line", { class: "gridline", x1: PAD.l, x2: PAD.l + plotW, y1: y(v), y2: y(v) }));
+      svg.appendChild(svgEl("text", { class: "tick", x: PAD.l - 8, y: y(v) + 3.5, "text-anchor": "end" }, fmt(v)));
+    });
+
+    svg.appendChild(svgEl("line", { class: "axis", x1: PAD.l, x2: PAD.l + plotW, y1: PAD.t + plotH, y2: PAD.t + plotH }));
+    for (let i = 0; i < data.length; i += 12) {
+      svg.appendChild(svgEl("text", { class: "tick", x: x(i), y: H - 9, "text-anchor": "middle" }, clock(i)));
+    }
+
+    // irrigation events, drawn under the line so they never hide a value
+    (events || []).forEach(e => {
+      svg.appendChild(svgEl("line", { class: "evtline", x1: x(e.i), x2: x(e.i), y1: PAD.t, y2: PAD.t + plotH }));
+      const cx = x(e.i), cy = PAD.t + plotH;
+      svg.appendChild(svgEl("polygon", { class: "evt", points: `${cx},${cy - 8} ${cx - 5},${cy} ${cx + 5},${cy}` }));
+    });
+
+    let d = "";
+    data.forEach((v, i) => {
+      if (v == null) return;
+      d += (d ? "L" : "M") + x(i).toFixed(1) + " " + y(v).toFixed(1);
+    });
+    const lastIdx = data.reduce((acc, v, i) => v == null ? acc : i, 0);
+    const area = d + `L${x(lastIdx).toFixed(1)} ${PAD.t + plotH}L${PAD.l} ${PAD.t + plotH}Z`;
+    svg.appendChild(svgEl("path", { class: "areafill", d: area }));
+    svg.appendChild(svgEl("path", { class: "series", d }));
+
+    svg.appendChild(svgEl("circle", { class: "cursordot", cx: x(lastIdx), cy: y(data[lastIdx]), r: 4 }));
+    if (lastLabel) {
+      svg.appendChild(svgEl("text", {
+        class: "endlabel", x: Math.min(x(lastIdx) + 8, W - 4), y: y(data[lastIdx]) + 3.5
+      }, lastLabel));
+    }
+
+    const cross = svgEl("line", { class: "crosshair", x1: 0, x2: 0, y1: PAD.t, y2: PAD.t + plotH, opacity: 0 });
+    const dot = svgEl("circle", { class: "cursordot", r: 4, opacity: 0 });
+    svg.appendChild(cross); svg.appendChild(dot);
+
+    function move(ev) {
+      const box = svg.getBoundingClientRect();
+      const px = ((ev.touches ? ev.touches[0].clientX : ev.clientX) - box.left) / box.width * W;
+      let i = Math.round((px - PAD.l) / plotW * (data.length - 1));
+      i = Math.max(0, Math.min(data.length - 1, i));
+      if (data[i] == null) { leave(); return; }
+      cross.setAttribute("x1", x(i)); cross.setAttribute("x2", x(i)); cross.setAttribute("opacity", 1);
+      dot.setAttribute("cx", x(i)); dot.setAttribute("cy", y(data[i])); dot.setAttribute("opacity", 1);
+      tipEl.innerHTML = `<div class="t">${clock(i)}</div><div class="v">${fmt(data[i])}</div>`;
+      tipEl.style.opacity = 1;
+      const left = (x(i) / W) * box.width;
+      tipEl.style.left = Math.max(4, Math.min(box.width - 96, left - 40)) + "px";
+      tipEl.style.top = ((y(data[i]) / H) * box.height - 52) + "px";
+    }
+    function leave() {
+      cross.setAttribute("opacity", 0); dot.setAttribute("opacity", 0); tipEl.style.opacity = 0;
+    }
+    svg.addEventListener("mousemove", move);
+    svg.addEventListener("touchmove", move, { passive: true });
+    svg.addEventListener("mouseleave", leave);
+    svg.addEventListener("touchend", leave);
+  }
+
+  const int = v => Math.round(v).toString();
+
+  function drawAll() {
+    drawChart(document.getElementById("chart-m"), {
+      data: M, band: [630, 900], events: [{ i: 34 }], fmt: int,
+      tipEl: document.getElementById("tip-m"), lastLabel: "727"
+    });
+    /* The fern's series ends two buckets early, because the sensor stopped
+       reporting at 16:34 and the 16:45 and 17:00 rollups have nothing in them.
+       The trace stops there rather than being carried forward flat, which
+       would look exactly like a plant whose moisture had levelled off. */
+    drawChart(document.getElementById("chart-f"), {
+      data: F, band: [820, 1140], events: [{ i: 52 }], fmt: int,
+      tipEl: document.getElementById("tip-f"), lastLabel: "1019"
+    });
+    drawChart(document.getElementById("chart-l"), {
+      data: L, band: null, events: [], fmt: v => v >= 1000 ? (v / 1000).toFixed(1) + "k" : int(v),
+      tipEl: document.getElementById("tip-l"), lastLabel: "2.3k"
+    });
+  }
+  drawAll();
+
+  // ---------- navigation: sidebar and tab bar drive the same panels ----------
+  const navButtons = () => document.querySelectorAll('[role="tab"][data-tab]');
+  function select(tab) {
+    navButtons().forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === tab)));
+    document.querySelectorAll(".panel").forEach(p => p.classList.toggle("active", p.dataset.panel === tab));
+  }
+  navButtons().forEach(btn => btn.addEventListener("click", () => select(btn.dataset.tab)));
+
+  // ---------- range chips ----------
+  document.querySelectorAll(".chips button").forEach(btn => {
+    btn.addEventListener("click", () => {
+      btn.parentElement.querySelectorAll("button")
+        .forEach(b => b.setAttribute("aria-pressed", String(b === btn)));
+      toast("Design shows the 24h range only");
+    });
+  });
+
+  // ---------- unit toggle (display only; storage and computation stay SI) ----------
+  let unit = "C";
+  const unitBtn = document.getElementById("unit");
+  unitBtn.addEventListener("click", () => {
+    unit = unit === "C" ? "F" : "C";
+    unitBtn.textContent = "°" + unit;
+    document.querySelectorAll("[data-temp]").forEach(el => {
+      const c = parseFloat(el.dataset.temp);
+      const v = unit === "C" ? c : c * 9 / 5 + 32;
+      const u = "°" + unit;
+      // tiles carry the unit in a span; key/value rows render it inline
+      const span = el.querySelector(".u");
+      if (span) { el.childNodes[0].nodeValue = v.toFixed(1); span.textContent = u; }
+      else { el.textContent = v.toFixed(1) + " " + u; }
+    });
+  });
+
+  // ---------- preview: viewport and theme ----------
+  const device = document.getElementById("device");
+  const vwPhone = document.getElementById("vw-phone"), vwDesk = document.getElementById("vw-desk");
+  function setView(phone) {
+    device.classList.toggle("phone", phone);
+    vwPhone.setAttribute("aria-pressed", String(phone));
+    vwDesk.setAttribute("aria-pressed", String(!phone));
+  }
+  vwPhone.addEventListener("click", () => setView(true));
+  vwDesk.addEventListener("click", () => setView(false));
+
+  const thDark = document.getElementById("th-dark"), thLight = document.getElementById("th-light");
+  function setTheme(dark) {
+    document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+    thDark.setAttribute("aria-pressed", String(dark));
+    thLight.setAttribute("aria-pressed", String(!dark));
+  }
+  thDark.addEventListener("click", () => setTheme(true));
+  thLight.addEventListener("click", () => setTheme(false));
+  setTheme(true);
+
+  // ---------- actions ----------
+  let toastTimer;
+  function toast(msg) {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove("show"), 2800);
+  }
+
+  document.querySelectorAll("[data-water]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      if (btn.dataset.water === "Boston fern") {
+        toast("Blocked — cooldown active, 10 minutes remaining");
+      } else {
+        toast("Queued — the control loop will run it on the next tick, guards permitting");
+      }
+    });
+  });
+  document.querySelectorAll("[data-detail]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      select("history");
+      document.querySelector('.panel[data-panel="history"]').scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
+})();
+</script>

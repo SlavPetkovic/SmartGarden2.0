@@ -1,0 +1,81 @@
+name: CI
+
+# This workflow is the merge gate. Branch protection requires every job below
+# to be green before a pull request can reach main, and no human approval is
+# required -- so these checks are the only thing standing between a change and
+# the branch the Pi deploys from. Treat a red build as a stop, never as a
+# formality to route around.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # The control service declares no third-party dependencies (CLAUDE.md hard
+  # rule 7). This job installs nothing at all, which is the only honest way to
+  # prove that claim -- if a stray `import pydantic` lands in core, this job is
+  # where it surfaces, not on the Pi at 3am.
+  tests-bare:
+    name: tests (no dependencies)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Run the suite with the standard library only
+        run: PYTHONPATH=src python -m unittest discover -s tests -t . -v
+
+  lint-and-types:
+    name: ruff + mypy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - name: Install dev extras
+        run: pip install -e ".[dev]"
+      - name: ruff
+        run: ruff check .
+      - name: ruff format check
+        run: ruff format --check .
+        continue-on-error: true
+      - name: mypy
+        run: mypy
+
+  guard-rails:
+    name: structural guard rails
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Check the invariants CLAUDE.md calls correctness bugs
+        run: python scripts/gate.py
+
+  coverage:
+    name: pytest + coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - name: Install dev extras
+        run: pip install -e ".[dev]"
+      - name: pytest
+        run: pytest -m "not hardware" --cov --cov-report=term-missing

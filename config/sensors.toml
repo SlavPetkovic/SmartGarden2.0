@@ -1,0 +1,85 @@
+# Nodes and the sensors attached to them.
+#
+# A node is a source of readings. The Pi's own I2C bus is one; a future
+# battery-powered board in a garden bed will be another, and nothing downstream
+# will be able to tell them apart.
+#
+# To add a sensor: write a driver in src/smartgarden/drivers/sensors/, then add
+# a [[sensor]] block here. Nothing else in the codebase needs to change.
+
+[[node]]
+slug = "pi-local"
+kind = "local"
+description = "Raspberry Pi 5 onboard I2C bus"
+stale_after_seconds = 60.0
+
+
+# --- air ------------------------------------------------------------------
+
+[[sensor]]
+slug     = "air-1"
+node     = "pi-local"
+driver   = "bme680"
+address  = 0x77          # 0x76 on some breakouts; `doctor` will tell you
+interval_seconds = 10.0
+zone     = "windowsill"
+
+[sensor.roles]
+temperature = "air_temp"
+humidity    = "humidity"
+pressure    = "pressure"
+gas         = "gas_resistance"
+
+
+# --- light ----------------------------------------------------------------
+
+[[sensor]]
+slug     = "light-1"
+node     = "pi-local"
+driver   = "veml7700"
+address  = 0x10
+interval_seconds = 10.0
+zone     = "windowsill"
+
+# Lux to PPFD depends on the light's spectrum. 54 is the standard daylight
+# figure and is right for a windowsill. Under a white LED fixture it is closer
+# to 75; measure or look up your fixture rather than trusting this.
+lux_per_ppfd = 54.0
+
+[sensor.roles]
+lux = "light"
+
+
+# --- soil -----------------------------------------------------------------
+
+[[sensor]]
+slug     = "soil-monstera"
+node     = "pi-local"
+driver   = "seesaw_soil"
+address  = 0x36
+interval_seconds = 60.0   # soil moves slowly; reading it every 10s is noise
+zone     = "windowsill"
+plant    = "monstera"
+
+[sensor.roles]
+moisture    = "soil_moisture"
+temperature = "soil_temp"
+
+
+# A second soil sensor needs a different address. The Seesaw board offers only
+# 0x36-0x39, so beyond four you need a TCA9548A multiplexer -- then several
+# sensors can share address 0x36 on different mux channels:
+#
+# [[sensor]]
+# slug        = "soil-fern"
+# node        = "pi-local"
+# driver      = "seesaw_soil"
+# address     = 0x36
+# mux_address = 0x70
+# mux_channel = 1
+# interval_seconds = 60.0
+# zone        = "windowsill"
+# plant       = "fern"
+# [sensor.roles]
+# moisture    = "soil_moisture"
+# temperature = "soil_temp"

@@ -1,0 +1,39 @@
+# Runtime data — never commit the database or backups
+data/
+*.db
+*.db-wal
+*.db-shm
+
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Release archives
+*.zip
+
+# Superseded scratch copies. "Claude outputs/" holds an older settings.json and
+# next-layer.md that contradict the ones in setup/claude/ -- an agent reading
+# both would find one file granting git authority and another denying it.
+Claude outputs/
+
+# Autobuild run logs and BLOCKED reports
+.autobuild/

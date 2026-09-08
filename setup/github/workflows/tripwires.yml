@@ -1,0 +1,48 @@
+name: Tripwires
+
+# Nothing here forbids a change. Each check asks that a particular kind of
+# change be acknowledged in the pull request body, so it cannot happen quietly:
+# tuning that automation acts on, safety constants, and a shrinking test suite.
+#
+# See scripts/diff_gate.py for the reasoning and docs/git-workflow.md for how
+# to clear one.
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tripwires-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  tripwires:
+    name: change-shape tripwires
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The tripwires diff against the merge base, so the full history of
+          # both branches has to be present.
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Write the pull request body to a file
+        # Through the environment, never interpolated into the shell: a pull
+        # request body is text a person wrote, not a script.
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: printf '%s' "$PR_BODY" > "$RUNNER_TEMP/pr-body.txt"
+
+      - name: Check
+        run: |
+          git fetch --no-tags origin "${{ github.base_ref }}"
+          python scripts/diff_gate.py \
+            --base "origin/${{ github.base_ref }}" \
+            --body-file "$RUNNER_TEMP/pr-body.txt"

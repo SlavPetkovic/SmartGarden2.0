@@ -1,0 +1,54 @@
+# Plants and their seed care profiles.
+#
+# These are STARTING VALUES ONLY. Once the system is running, thresholds and
+# targets are edited from the dashboard and stored in the database, which takes
+# precedence over this file.
+#
+# ---------------------------------------------------------------------------
+# The moisture numbers below are placeholders and are almost certainly wrong
+# for your soil.
+#
+# An Adafruit Seesaw reports roughly 200 (probe in open air) to 2000 (probe in
+# water). Where "dry" and "watered" actually sit depends on your soil mix, how
+# deep the probe is, and the pot. There is no universal value.
+#
+# Get real ones like this: leave automation_enabled = false in app.toml, run
+# for several days, water each plant as you normally would, then look at the
+# chart. The plateau just after watering is your high threshold; the level at
+# which the plant starts looking thirsty is your low one.
+# ---------------------------------------------------------------------------
+
+[[plant]]
+slug    = "monstera"
+name    = "Monstera"
+zone    = "windowsill"
+species = "Monstera deliciosa"
+location = "Left of the sink"
+
+moisture_low  = 450.0   # PLACEHOLDER -- calibrate
+moisture_high = 800.0   # PLACEHOLDER -- calibrate
+
+# Daily light integral target, mol/m2/day. Monstera is an understorey plant and
+# is content with fairly little; a tomato would want 20-30.
+dli_target_moles = 6.0
+photoperiod_start_hour = 7
+photoperiod_end_hour   = 20
+
+notes = "Tolerates drying out between waterings. Prefers underwatering to over."
+
+
+[[plant]]
+slug    = "fern"
+name    = "Boston fern"
+zone    = "windowsill"
+species = "Nephrolepis exaltata"
+location = "Right of the sink"
+
+moisture_low  = 700.0   # PLACEHOLDER -- calibrate
+moisture_high = 1100.0  # PLACEHOLDER -- calibrate
+
+dli_target_moles = 4.0
+photoperiod_start_hour = 7
+photoperiod_end_hour   = 20
+
+notes = "Wants consistently damp soil. Higher thresholds than the monstera."

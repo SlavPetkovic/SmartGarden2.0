@@ -1,0 +1,67 @@
+# Zones and the outputs that serve them.
+#
+# A zone is an independently watered area with its own safety envelope. Even
+# with a single zone today, everything downstream carries a zone_id, so adding
+# the second one is a block in this file rather than a migration.
+
+[[zone]]
+slug = "windowsill"
+name = "Kitchen windowsill"
+timezone = "America/New_York"
+
+# Watering is allowed only between these local hours, unless a plant is below
+# its emergency threshold. Evaluated in the zone's own timezone, DST included.
+watering_start_hour = 7
+watering_end_hour   = 21
+
+# Hard ceilings, per zone, per day and per hour. These are the numbers that
+# stand between a stuck sensor and a flooded floor.
+daily_budget_seconds = 120.0
+max_pulses_per_hour  = 6
+
+# Minimum gap between pulses, and how long to wait after one before trusting a
+# moisture reading again. Water takes time to reach the probe -- reading too
+# soon looks like "nothing happened" and triggers another pulse.
+cooldown_seconds = 900.0
+settle_seconds   = 600.0
+
+enabled = true
+
+
+# --- outputs --------------------------------------------------------------
+#
+# driver = "simulated" logs what it would have done and touches no hardware.
+# When the relay board arrives, change it to "gpio_relay", set the real pin,
+# and confirm active_low with `smartgarden doctor`. That is the whole change.
+
+[[device]]
+slug   = "pump-windowsill"
+kind   = "irrigate"
+zone   = "windowsill"
+driver = "simulated"
+pin    = 23
+active_low = true
+
+# Absolute ceiling enforced inside the driver, whatever the caller asks for.
+max_on_seconds = 10.0
+
+# Phase 1 uses a fixed pulse. Dose calculated from a learned absorption model
+# is Phase 2 -- it needs data that does not exist yet.
+pulse_seconds = 6.0
+
+
+[[device]]
+slug   = "light-windowsill"
+kind   = "light"
+zone   = "windowsill"
+driver = "simulated"
+pin    = 24
+active_low = true
+
+max_on_seconds = 43200.0   # 12h, the longest photoperiod we would ever run
+
+# PPFD delivered at the canopy by this fixture, in umol/m2/s. Used to work out
+# how long to run to close a daily light integral shortfall. Measure it if you
+# can; otherwise take the manufacturer's figure at your mounting height and
+# treat the resulting DLI as approximate.
+fixture_ppfd = 220.0

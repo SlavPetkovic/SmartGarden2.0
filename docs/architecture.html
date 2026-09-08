@@ -1,0 +1,1136 @@
+<title>SmartGarden Blueprint</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --bg: #F6F7F4;
+    --surface: #FFFFFF;
+    --surface-2: #EDF1EB;
+    --ink: #16211C;
+    --ink-2: #435049;
+    --muted: #6E7B73;
+    --line: #DCE3DB;
+    --line-strong: #C3CDC1;
+    --accent: #1C7A4E;
+    --accent-soft: #E3F0E8;
+    --water: #1B6A87;
+    --water-soft: #E0EDF2;
+    --warn: #8F5D0C;
+    --warn-soft: #F6EBD6;
+    --crit: #A63328;
+    --crit-soft: #F7E4E1;
+    --shadow: 0 1px 2px rgba(22,33,28,.05), 0 8px 24px -16px rgba(22,33,28,.28);
+
+    --f-display: "Fraunces", "Iowan Old Style", Georgia, serif;
+    --f-body: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --f-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0E1512;
+      --surface: #16201B;
+      --surface-2: #1D2822;
+      --ink: #E4EBE5;
+      --ink-2: #B3C0B8;
+      --muted: #899A90;
+      --line: #2A362F;
+      --line-strong: #3A4941;
+      --accent: #56C286;
+      --accent-soft: #17301F;
+      --water: #5AAECC;
+      --water-soft: #142B34;
+      --warn: #D9A441;
+      --warn-soft: #2E2617;
+      --crit: #E4796B;
+      --crit-soft: #331D1A;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.8);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #0E1512;
+    --surface: #16201B;
+    --surface-2: #1D2822;
+    --ink: #E4EBE5;
+    --ink-2: #B3C0B8;
+    --muted: #899A90;
+    --line: #2A362F;
+    --line-strong: #3A4941;
+    --accent: #56C286;
+    --accent-soft: #17301F;
+    --water: #5AAECC;
+    --water-soft: #142B34;
+    --warn: #D9A441;
+    --warn-soft: #2E2617;
+    --crit: #E4796B;
+    --crit-soft: #331D1A;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--f-body);
+    font-size: 16px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 24px 96px;
+  }
+
+  @media (min-width: 1040px) {
+    .wrap {
+      grid-template-columns: 210px minmax(0, 1fr);
+      gap: 56px;
+      padding: 0 32px 120px;
+    }
+  }
+
+  /* ---------- masthead ---------- */
+
+  header.masthead {
+    grid-column: 1 / -1;
+    padding: 64px 0 40px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 48px;
+  }
+
+  .eyebrow {
+    font-size: .7rem;
+    font-weight: 600;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 18px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+  }
+  .eyebrow .sep { color: var(--line-strong); }
+  .eyebrow .plain { color: var(--muted); }
+
+  h1 {
+    font-family: var(--f-display);
+    font-weight: 700;
+    font-size: clamp(2.3rem, 6vw, 3.4rem);
+    line-height: 1.04;
+    letter-spacing: -.02em;
+    margin: 0 0 20px;
+    text-wrap: balance;
+    max-width: 16ch;
+  }
+
+  .standfirst {
+    font-size: 1.075rem;
+    color: var(--ink-2);
+    max-width: 62ch;
+    margin: 0 0 32px;
+  }
+
+  .factbar {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .fact {
+    background: var(--surface);
+    padding: 14px 16px;
+  }
+  .fact dt {
+    font-size: .68rem;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 5px;
+  }
+  .fact dd {
+    margin: 0;
+    font-family: var(--f-mono);
+    font-size: .82rem;
+    font-weight: 500;
+    color: var(--ink);
+  }
+
+  /* ---------- nav ---------- */
+
+  nav.toc {
+    display: none;
+  }
+  @media (min-width: 1040px) {
+    nav.toc {
+      display: block;
+      position: sticky;
+      top: 32px;
+      align-self: start;
+      max-height: calc(100vh - 64px);
+      overflow-y: auto;
+    }
+  }
+  nav.toc h2 {
+    font-family: var(--f-body);
+    font-size: .68rem;
+    font-weight: 600;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 14px;
+  }
+  nav.toc ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    counter-reset: toc;
+  }
+  nav.toc a {
+    display: flex;
+    gap: 10px;
+    text-decoration: none;
+    color: var(--ink-2);
+    font-size: .845rem;
+    padding: 4px 0;
+    border-radius: 2px;
+  }
+  nav.toc li { counter-increment: toc; }
+  nav.toc a::before {
+    content: counter(toc, decimal-leading-zero);
+    font-family: var(--f-mono);
+    font-size: .72rem;
+    color: var(--line-strong);
+    padding-top: 2px;
+  }
+  nav.toc a:hover { color: var(--accent); }
+  nav.toc a:hover::before { color: var(--accent); }
+  nav.toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ---------- content ---------- */
+
+  main { min-width: 0; }
+
+  section { margin: 0 0 68px; scroll-margin-top: 24px; }
+
+  h2 {
+    font-family: var(--f-display);
+    font-weight: 600;
+    font-size: clamp(1.45rem, 3.2vw, 1.95rem);
+    line-height: 1.15;
+    letter-spacing: -.015em;
+    margin: 0 0 6px;
+    text-wrap: balance;
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+  }
+  h2 .num {
+    font-family: var(--f-mono);
+    font-size: .8rem;
+    font-weight: 500;
+    color: var(--accent);
+    letter-spacing: 0;
+    flex: none;
+  }
+
+  .lede {
+    color: var(--muted);
+    max-width: 66ch;
+    margin: 0 0 26px;
+    font-size: .96rem;
+  }
+
+  h3 {
+    font-family: var(--f-body);
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 34px 0 12px;
+    color: var(--ink);
+  }
+
+  p { max-width: 66ch; margin: 0 0 16px; }
+  main p { color: var(--ink-2); }
+  main p strong { color: var(--ink); font-weight: 600; }
+
+  a { color: var(--accent); }
+
+  code {
+    font-family: var(--f-mono);
+    font-size: .855em;
+    background: var(--surface-2);
+    padding: .12em .38em;
+    border-radius: 3px;
+    color: var(--ink);
+  }
+
+  /* ---------- requirement list ---------- */
+
+  ul.reqs {
+    list-style: none;
+    margin: 0 0 8px;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    background: var(--line);
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+  ul.reqs li {
+    background: var(--bg);
+    display: grid;
+    grid-template-columns: 88px minmax(0, 1fr);
+    gap: 16px;
+    padding: 13px 0;
+    align-items: start;
+  }
+  @media (max-width: 640px) {
+    ul.reqs li { grid-template-columns: 1fr; gap: 5px; }
+  }
+  .rid {
+    font-family: var(--f-mono);
+    font-size: .74rem;
+    font-weight: 500;
+    color: var(--accent);
+    padding-top: 3px;
+    letter-spacing: .01em;
+  }
+  .rtext { color: var(--ink-2); font-size: .94rem; }
+  .rtext strong { color: var(--ink); font-weight: 600; }
+
+  /* ---------- figures ---------- */
+
+  figure {
+    margin: 30px 0;
+    padding: 0;
+  }
+  .figframe {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 22px 20px;
+    overflow-x: auto;
+    box-shadow: var(--shadow);
+  }
+  figure svg {
+    display: block;
+    width: 100%;
+    min-width: 620px;
+    max-width: 100%;
+    height: auto;
+    color: var(--ink);
+  }
+  figcaption {
+    margin-top: 12px;
+    font-size: .82rem;
+    color: var(--muted);
+    max-width: 70ch;
+  }
+  figcaption b { color: var(--ink-2); font-weight: 600; }
+
+  .svg-fill-surface { fill: var(--surface); }
+  .svg-fill-panel { fill: var(--surface-2); }
+  .svg-stroke { stroke: var(--line-strong); }
+  .svg-label { fill: var(--ink); font-family: "IBM Plex Sans", sans-serif; }
+  .svg-sub { fill: var(--muted); font-family: "IBM Plex Mono", monospace; }
+  .svg-edge { fill: var(--muted); font-family: "IBM Plex Sans", sans-serif; }
+
+  /* ---------- tables ---------- */
+
+  .tablewrap {
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    margin: 22px 0;
+    background: var(--surface);
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 520px;
+    font-size: .885rem;
+  }
+  th, td {
+    text-align: left;
+    padding: 11px 16px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  thead th {
+    font-size: .68rem;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    background: var(--surface-2);
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td.mono, th.mono { font-family: var(--f-mono); font-size: .8rem; font-variant-numeric: tabular-nums; }
+  td .lname { color: var(--ink); font-weight: 600; }
+
+  /* ---------- code blocks ---------- */
+
+  pre {
+    font-family: var(--f-mono);
+    font-size: .8rem;
+    line-height: 1.62;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 16px 18px;
+    overflow-x: auto;
+    margin: 20px 0;
+    color: var(--ink-2);
+  }
+  pre .c { color: var(--muted); }
+  pre .k { color: var(--accent); }
+  pre .s { color: var(--water); }
+
+  /* ---------- callout ---------- */
+
+  .note {
+    border-left: 2px solid var(--accent);
+    padding: 2px 0 2px 18px;
+    margin: 24px 0;
+  }
+  .note.warn { border-left-color: var(--warn); }
+  .note p { margin: 0 0 8px; font-size: .93rem; }
+  .note p:last-child { margin-bottom: 0; }
+  .note .tag {
+    display: block;
+    font-size: .67rem;
+    font-weight: 600;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+  .note.warn .tag { color: var(--warn); }
+
+  /* ---------- chips ---------- */
+
+  .chip {
+    display: inline-block;
+    font-family: var(--f-mono);
+    font-size: .68rem;
+    font-weight: 500;
+    padding: 2px 7px;
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+  .chip.p1 { background: var(--accent-soft); color: var(--accent); }
+  .chip.p2 { background: var(--water-soft); color: var(--water); }
+  .chip.def { background: var(--surface-2); color: var(--muted); }
+  .chip.sim { background: var(--warn-soft); color: var(--warn); }
+
+  footer.end {
+    grid-column: 1 / -1;
+    border-top: 1px solid var(--line);
+    padding-top: 24px;
+    margin-top: 20px;
+    color: var(--muted);
+    font-size: .82rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 20px;
+  }
+  footer.end span { font-family: var(--f-mono); }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="eyebrow">
+      <span>Phase 1 Specification</span>
+      <span class="sep">/</span>
+      <span class="plain">Rev A &middot; 4 September 2026</span>
+      <span class="sep">/</span>
+      <span class="plain">Slav Petkovic</span>
+    </p>
+    <h1>SmartGarden Blueprint</h1>
+    <p class="standfirst">
+      A clean-slate design for a sensor-driven irrigation and lighting system on a Raspberry&nbsp;Pi&nbsp;5 —
+      three plants on a kitchen windowsill today, dozens of beds across a garden later, without a rewrite in between.
+      This document is the contract the build is written against.
+    </p>
+    <dl class="factbar">
+      <div class="fact"><dt>Platform</dt><dd>Pi OS Trixie &middot; Py 3.13</dd></div>
+      <div class="fact"><dt>GPIO</dt><dd>gpiozero + lgpio</dd></div>
+      <div class="fact"><dt>Store</dt><dd>SQLite (WAL)</dd></div>
+      <div class="fact"><dt>Serving</dt><dd>FastAPI + PWA</dd></div>
+      <div class="fact"><dt>Access</dt><dd>Tailscale only</dd></div>
+      <div class="fact"><dt>Build</dt><dd>6 layers</dd></div>
+    </dl>
+  </header>
+
+  <nav class="toc" aria-label="Contents">
+    <h2>Contents</h2>
+    <ol>
+      <li><a href="#scope">Scope</a></li>
+      <li><a href="#platform">Platform</a></li>
+      <li><a href="#architecture">Architecture</a></li>
+      <li><a href="#data">Data model</a></li>
+      <li><a href="#storage">Storage</a></li>
+      <li><a href="#sensing">Sensing</a></li>
+      <li><a href="#control">Control</a></li>
+      <li><a href="#safety">Safety</a></li>
+      <li><a href="#interface">Interface</a></li>
+      <li><a href="#operations">Operations</a></li>
+      <li><a href="#phase2">Phase 2 hooks</a></li>
+      <li><a href="#build">Build plan</a></li>
+    </ol>
+  </nav>
+
+  <main>
+
+    <!-- ============ 1 SCOPE ============ -->
+    <section id="scope">
+      <h2><span class="num">01</span>Scope</h2>
+      <p class="lede">What Phase 1 delivers, and — more usefully — what it deliberately does not.</p>
+
+      <p>
+        Phase 1 is a complete, running system: it reads three real sensors, stores everything, decides when to
+        water and light, acts on those decisions, and presents all of it on a phone. The irrigation hardware
+        does not exist yet, so Phase 1 ships <strong>simulated actuator drivers</strong> alongside real sensor
+        drivers. The whole loop is exercisable today; when relays and valves arrive it is a config change,
+        not a code change.
+      </p>
+
+      <ul class="reqs">
+        <li><span class="rid">SCOPE-1</span><span class="rtext">The system runs end-to-end on real sensor hardware with simulated actuators, and switches to real actuators by editing <code>devices.toml</code> only. <span class="chip sim">simulated in P1</span></span></li>
+        <li><span class="rid">SCOPE-2</span><span class="rtext">All decision logic is testable without a Raspberry Pi, without I2C and without a database.</span></li>
+        <li><span class="rid">SCOPE-3</span><span class="rtext">Adding a new sensor type requires a new driver file and a config entry — <strong>no changes to storage, API or UI code</strong>. This is the primary design constraint.</span></li>
+        <li><span class="rid">SCOPE-4</span><span class="rtext">The data written in Phase 1 is the training set for Phase 2. Schema decisions are made accordingly.</span></li>
+      </ul>
+
+      <h3>Explicitly out of scope</h3>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Item</th><th>Status</th><th>Rationale</th></tr></thead>
+          <tbody>
+            <tr><td><span class="lname">Weather forecast integration</span></td><td><span class="chip def">deferred</span></td><td>Ingest layer is generic enough to accept it later as another data source.</td></tr>
+            <tr><td><span class="lname">Camera / plant imagery</span></td><td><span class="chip def">deferred</span></td><td>Separate dataset, separate problem. No hooks built.</td></tr>
+            <tr><td><span class="lname">Remote wireless nodes</span></td><td><span class="chip p2">Phase 2</span></td><td>Hardware undecided. The <em>ingest API</em> is built in Phase 1; the nodes are not.</td></tr>
+            <tr><td><span class="lname">Adaptive dosing / learned models</span></td><td><span class="chip p2">Phase 2</span></td><td>Requires weeks of logged data that does not exist yet.</td></tr>
+            <tr><td><span class="lname">Native mobile app</span></td><td><span class="chip def">Phase 3</span></td><td>The PWA covers most of it; the JSON API is the seam.</td></tr>
+            <tr><td><span class="lname">User accounts / login</span></td><td><span class="chip def">deferred</span></td><td>Tailscale is the access boundary. Token auth is implemented but disabled.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ 2 PLATFORM ============ -->
+    <section id="platform">
+      <h2><span class="num">02</span>Platform</h2>
+      <p class="lede">Target hardware and the one library choice that is not negotiable.</p>
+
+      <div class="note warn">
+        <span class="tag">Blocking constraint</span>
+        <p>
+          <code>RPi.GPIO</code> does not work on the Raspberry Pi 5. The Pi 5 moved its GPIO behind the RP1
+          south bridge, and the legacy library cannot address it. All GPIO goes through
+          <code>gpiozero</code> with the <code>lgpio</code> pin factory.
+        </p>
+      </div>
+
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Component</th><th class="mono">Detail</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td><span class="lname">Compute</span></td><td class="mono">Raspberry Pi 5 Model B Rev 1.0</td><td>Ample headroom; Phase 2 model fitting runs on-device.</td></tr>
+            <tr><td><span class="lname">Storage</span></td><td class="mono">M.2 HAT, 256 GB NVMe</td><td>Removes SD-card wear as a failure mode. Database and backups both live here.</td></tr>
+            <tr><td><span class="lname">OS</span></td><td class="mono">Raspberry Pi OS Trixie, 64-bit</td><td>Ships Python 3.13.</td></tr>
+            <tr><td><span class="lname">Air sensor</span></td><td class="mono">BME680 &middot; I2C 0x76/0x77</td><td>Temperature, humidity, pressure, gas resistance.</td></tr>
+            <tr><td><span class="lname">Light sensor</span></td><td class="mono">VEML7700 &middot; I2C 0x10</td><td>Ambient lux. Gain and integration time set explicitly, not left at default.</td></tr>
+            <tr><td><span class="lname">Soil sensor</span></td><td class="mono">Adafruit STEMMA Seesaw &middot; 0x36–0x39</td><td>Capacitance plus soil temperature. Four addresses only — see SENS-4.</td></tr>
+            <tr><td><span class="lname">Actuators</span></td><td class="mono">none yet</td><td>Simulated drivers in Phase 1. Parts list in <code>docs/hardware.md</code>.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <ul class="reqs">
+        <li><span class="rid">PLAT-1</span><span class="rtext">Python 3.13, installed into a project-local virtualenv. No system-wide package installation.</span></li>
+        <li><span class="rid">PLAT-2</span><span class="rtext">All GPIO access via <code>gpiozero</code> with the <code>lgpio</code> pin factory. <code>RPi.GPIO</code> must not appear in the dependency tree.</span></li>
+        <li><span class="rid">PLAT-3</span><span class="rtext">Dependencies declared once, in <code>pyproject.toml</code>. A lock file is generated; there is no hand-maintained <code>requirements.txt</code>.</span></li>
+        <li><span class="rid">PLAT-4</span><span class="rtext">Hardware-only dependencies are an optional extra (<code>[pi]</code>), so the test suite installs and runs on a laptop.</span></li>
+      </ul>
+    </section>
+
+    <!-- ============ 3 ARCHITECTURE ============ -->
+    <section id="architecture">
+      <h2><span class="num">03</span>Architecture</h2>
+      <p class="lede">Two processes, one database, and a deliberate absence of coupling between them.</p>
+
+      <p>
+        The control loop and the web server are <strong>separate systemd units</strong>. A crash in the
+        dashboard, or a deploy of a UI change, must never interrupt watering. They communicate only
+        through SQLite: the loop writes observations and reads a command queue; the web process writes
+        commands and settings and reads everything else.
+      </p>
+
+      <figure>
+        <div class="figframe">
+          <svg viewBox="0 0 970 585" role="img" aria-label="Two systemd processes share a SQLite database. The control process polls the Pi's I2C sensors, writes readings, events and decisions to SQLite, and reads a command queue back from it. The web process ingests remote nodes, serves the PWA, and writes commands and settings. A watchdog thread and systemd's stop hook reach the relay outputs independently of the control loop.">
+            <defs>
+              <marker id="a1" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="9" markerHeight="7" orient="auto-start-reverse">
+                <polygon points="0,0 10,4 0,8" fill="currentColor"/>
+              </marker>
+            </defs>
+
+            <!-- row 1: sources / clients -->
+            <rect x="40" y="30" width="220" height="62" rx="3" class="svg-fill-surface svg-stroke" stroke-width="1"/>
+            <text x="150" y="55" text-anchor="middle" class="svg-label" font-size="13" font-weight="600">Pi I2C bus</text>
+            <text x="150" y="74" text-anchor="middle" class="svg-sub" font-size="10.5">BME680 · VEML7700 · Seesaw</text>
+
+            <rect x="330" y="30" width="240" height="62" rx="3" class="svg-fill-panel" stroke="currentColor" stroke-opacity=".3" stroke-width="1" stroke-dasharray="4 3"/>
+            <text x="450" y="55" text-anchor="middle" class="svg-label" font-size="13" font-weight="600">Remote node</text>
+            <text x="450" y="74" text-anchor="middle" class="svg-sub" font-size="10.5">Phase 2 · garden beds</text>
+
+            <rect x="660" y="30" width="270" height="62" rx="3" class="svg-fill-surface svg-stroke" stroke-width="1"/>
+            <text x="795" y="55" text-anchor="middle" class="svg-label" font-size="13" font-weight="600">Phone &amp; laptop</text>
+            <text x="795" y="74" text-anchor="middle" class="svg-sub" font-size="10.5">installed PWA</text>
+
+            <!-- row 2: processes -->
+            <rect x="40" y="152" width="530" height="128" rx="3" class="svg-fill-surface" stroke="currentColor" stroke-width="1.6"/>
+            <text x="60" y="176" class="svg-label" font-size="13" font-weight="600">smartgarden-control.service</text>
+            <text x="60" y="200" class="svg-sub" font-size="11">poll → normalise → store → decide → guard → actuate</text>
+            <text x="60" y="222" class="svg-sub" font-size="11">owns all hardware · no web dependencies</text>
+            <text x="60" y="252" class="svg-sub" font-size="11" fill="currentColor" opacity=".55">tick: 10 s fast channels / 60 s soil</text>
+
+            <rect x="660" y="152" width="270" height="128" rx="3" class="svg-fill-surface" stroke="currentColor" stroke-width="1.6"/>
+            <text x="680" y="176" class="svg-label" font-size="13" font-weight="600">smartgarden-web.service</text>
+            <text x="680" y="200" class="svg-sub" font-size="11">FastAPI · JSON only</text>
+            <text x="680" y="222" class="svg-sub" font-size="11">ingest endpoints</text>
+            <text x="680" y="252" class="svg-sub" font-size="11" fill="currentColor" opacity=".55">may crash freely</text>
+
+            <!-- row 3: watchdog + db -->
+            <rect x="40" y="336" width="240" height="66" rx="3" class="svg-fill-panel" stroke="currentColor" stroke-opacity=".45" stroke-width="1" stroke-dasharray="4 3"/>
+            <text x="160" y="362" text-anchor="middle" class="svg-label" font-size="12.5" font-weight="600">Watchdog thread</text>
+            <text x="160" y="381" text-anchor="middle" class="svg-sub" font-size="10.5">out of band</text>
+
+            <rect x="360" y="336" width="570" height="80" rx="3" class="svg-fill-panel svg-stroke" stroke-width="1"/>
+            <text x="645" y="364" text-anchor="middle" class="svg-label" font-size="13" font-weight="600">SQLite · WAL</text>
+            <text x="645" y="386" text-anchor="middle" class="svg-sub" font-size="10.5">readings · rollups · events · decisions · commands · settings</text>
+
+            <!-- row 4: actuators -->
+            <rect x="40" y="474" width="290" height="66" rx="3" class="svg-fill-surface svg-stroke" stroke-width="1"/>
+            <text x="185" y="500" text-anchor="middle" class="svg-label" font-size="12.5" font-weight="600">Relay outputs</text>
+            <text x="185" y="519" text-anchor="middle" class="svg-sub" font-size="10.5">valves · pump · grow light</text>
+
+            <!-- arrows -->
+            <g stroke="currentColor" stroke-width="1.3" fill="none" marker-end="url(#a1)">
+              <line x1="150" y1="92" x2="150" y2="148"/>
+              <path d="M450 92 L450 118 L700 118 L700 148"/>
+              <line x1="850" y1="92" x2="850" y2="148"/>
+              <line x1="160" y1="280" x2="160" y2="332"/>
+              <line x1="160" y1="402" x2="160" y2="470"/>
+              <line x1="305" y1="280" x2="305" y2="470"/>
+              <line x1="430" y1="280" x2="430" y2="332"/>
+              <line x1="500" y1="336" x2="500" y2="284"/>
+              <line x1="720" y1="280" x2="720" y2="332"/>
+              <line x1="870" y1="336" x2="870" y2="284"/>
+            </g>
+
+            <!-- arrow labels -->
+            <g class="svg-edge" font-size="10.5">
+              <text x="160" y="118" >poll</text>
+              <text x="470" y="112" >MQTT / HTTPS ingest</text>
+              <text x="860" y="118" >Tailscale</text>
+              <text x="170" y="316" >arms max-on timer</text>
+              <text x="170" y="444" >force-off at T+max</text>
+              <text x="315" y="380" >GPIO</text>
+              <text x="315" y="396" >on / off</text>
+              <text x="440" y="316" >writes</text>
+              <text x="510" y="312" >command queue</text>
+              <text x="730" y="316" >commands</text>
+              <text x="880" y="316" text-anchor="end">reads</text>
+            </g>
+          </svg>
+        </div>
+        <figcaption>
+          <b>SQLite is the message bus.</b> Neither process imports the other. The command queue is how
+          &ldquo;water now&rdquo; from a phone reaches the pump: the web process appends a row, the loop drains it
+          on its next tick. Note that the watchdog and the relay outputs are reachable
+          <em>without</em> the loop running — that is the point of drawing them outside it.
+        </figcaption>
+      </figure>
+
+      <ul class="reqs">
+        <li><span class="rid">ARCH-1</span><span class="rtext">Control and web run as independent systemd units. Neither imports code that would make it depend on the other running.</span></li>
+        <li><span class="rid">ARCH-2</span><span class="rtext">The control loop is the <strong>only</strong> writer of hardware state. The web process never touches GPIO or I2C.</span></li>
+        <li><span class="rid">ARCH-3</span><span class="rtext">Manual actions from the UI are queued as <code>commands</code> rows and executed by the loop, so every action passes the same safety guards as an automatic one.</span></li>
+        <li><span class="rid">ARCH-4</span><span class="rtext">The <code>core</code> package is pure: it imports nothing from <code>drivers</code>, <code>storage</code> or <code>web</code>, and performs no I/O.</span></li>
+        <li><span class="rid">ARCH-5</span><span class="rtext">SQLite opens in WAL mode with an explicit <code>busy_timeout</code>, so a long analytics read cannot fail a control-loop write.</span></li>
+        <li><span class="rid">ARCH-6</span><span class="rtext">Ingest endpoints accept readings from external nodes in the same normalised shape the local bus produces, so a remote sensor is indistinguishable downstream.</span></li>
+      </ul>
+    </section>
+
+    <!-- ============ 4 DATA MODEL ============ -->
+    <section id="data">
+      <h2><span class="num">04</span>Data model</h2>
+      <p class="lede">Measurements are channels, not columns. This is what makes SCOPE-3 achievable.</p>
+
+      <p>
+        The previous system stored one column per measurement, so adding a sensor meant editing a dataclass,
+        a schema, an insert, an API payload and the dashboard JavaScript. Here a driver <em>declares</em>
+        its channels and everything downstream is generated from that declaration.
+      </p>
+
+      <figure>
+        <div class="figframe">
+          <svg viewBox="0 0 960 430" role="img" aria-label="Entity relationships: a node has many sensors, a sensor has many channels, a channel has many readings. A channel's role binds it to a zone; a zone has one irrigation device and many plants, each plant carrying its own care profile.">
+            <defs>
+              <marker id="a2" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="9" markerHeight="7" orient="auto-start-reverse">
+                <polygon points="0,0 10,4 0,8" fill="currentColor"/>
+              </marker>
+            </defs>
+
+            <rect x="30" y="40" width="180" height="92" rx="3" class="svg-fill-surface svg-stroke" stroke-width="1"/>
+            <text x="46" y="64" class="svg-label" font-size="12.5" font-weight="600">node</text>
+            <text x="46" y="86" class="svg-sub" font-size="10.5">id · kind</text>
+            <text x="46" y="104" class="svg-sub" font-size="10.5">last_seen_at</text>
+            <text x="46" y="122" class="svg-sub" font-size="10.5">stale_after_s</text>
+
+            <rect x="270" y="40" width="180" height="92" rx="3" class="svg-fill-surface svg-stroke" stroke-width="1"/>
+            <text x="286" y="64" class="svg-label" font-size="12.5" font-weight="600">sensor</text>
+            <text x="286" y="86" class="svg-sub" font-size="10.5">node_id · driver</text>
+            <text x="286" y="104" class="svg-sub" font-size="10.5">address · mux_ch</text>
+            <text x="286" y="122" class="svg-sub" font-size="10.5">interval_s</text>
+
+            <rect x="510" y="40" width="190" height="112" rx="3" class="svg-fill-surface" stroke="currentColor" stroke-width="1.6"/>
+            <text x="526" y="64" class="svg-label" font-size="12.5" font-weight="600">channel</text>
+            <text x="526" y="86" class="svg-sub" font-size="10.5">sensor_id · key</text>
+            <text x="526" y="104" class="svg-sub" font-size="10.5">unit · precision</text>
+            <text x="526" y="122" class="svg-sub" font-size="10.5">role · zone_id</text>
+            <text x="526" y="142" class="svg-sub" font-size="10.5">plant_id</text>
+
+            <rect x="510" y="238" width="190" height="92" rx="3" class="svg-fill-panel svg-stroke" stroke-width="1"/>
+            <text x="526" y="262" class="svg-label" font-size="12.5" font-weight="600">reading</text>
+            <text x="526" y="284" class="svg-sub" font-size="10.5">channel_id · ts</text>
+            <text x="526" y="302" class="svg-sub" font-size="10.5">value</text>
+            <text x="526" y="320" class="svg-sub" font-size="10.5">quality</text>
+
+            <rect x="760" y="40" width="180" height="92" rx="3" class="svg-fill-surface svg-stroke" stroke-width="1"/>
+            <text x="776" y="64" class="svg-label" font-size="12.5" font-weight="600">zone</text>
+            <text x="776" y="86" class="svg-sub" font-size="10.5">id · name</text>
+            <text x="776" y="104" class="svg-sub" font-size="10.5">window · budget</text>
+            <text x="776" y="122" class="svg-sub" font-size="10.5">enabled</text>
+
+            <rect x="760" y="188" width="180" height="72" rx="3" class="svg-fill-surface svg-stroke" stroke-width="1"/>
+            <text x="776" y="212" class="svg-label" font-size="12.5" font-weight="600">device</text>
+            <text x="776" y="234" class="svg-sub" font-size="10.5">kind · pin</text>
+            <text x="776" y="252" class="svg-sub" font-size="10.5">max_on_s</text>
+
+            <rect x="760" y="316" width="180" height="92" rx="3" class="svg-fill-surface svg-stroke" stroke-width="1"/>
+            <text x="776" y="340" class="svg-label" font-size="12.5" font-weight="600">plant</text>
+            <text x="776" y="362" class="svg-sub" font-size="10.5">name · species</text>
+            <text x="776" y="380" class="svg-sub" font-size="10.5">moisture_target</text>
+            <text x="776" y="398" class="svg-sub" font-size="10.5">dli_target</text>
+
+            <g stroke="currentColor" stroke-width="1.3" fill="none" marker-end="url(#a2)">
+              <line x1="210" y1="86" x2="266" y2="86"/>
+              <line x1="450" y1="86" x2="506" y2="86"/>
+              <line x1="605" y1="152" x2="605" y2="234"/>
+              <line x1="700" y1="86" x2="756" y2="86"/>
+              <line x1="850" y1="132" x2="850" y2="184"/>
+              <line x1="850" y1="260" x2="850" y2="312"/>
+            </g>
+
+            <g class="svg-edge" font-size="10.5" text-anchor="middle">
+              <text x="238" y="78">1 : N</text>
+              <text x="478" y="78">1 : N</text>
+              <text x="640" y="197">1 : N</text>
+              <text x="728" y="78">role</text>
+              <text x="884" y="162">1 : 1</text>
+              <text x="884" y="290">1 : N</text>
+            </g>
+          </svg>
+        </div>
+        <figcaption>
+          <b>The <code>role</code> column is the load-bearing one.</b> Rules bind to
+          &ldquo;the soil-moisture role for zone 2&rdquo;, never to a field name, so replacing a sensor or moving
+          it to a different multiplexer channel leaves every rule intact. <code>node</code> exists so that the
+          Pi's own bus and a future battery-powered board in a garden bed are the same kind of thing.
+        </figcaption>
+      </figure>
+
+      <ul class="reqs">
+        <li><span class="rid">DATA-1</span><span class="rtext">Measurements are stored narrow: one row per <code>(channel, timestamp, value)</code>. No measurement ever becomes a table column.</span></li>
+        <li><span class="rid">DATA-2</span><span class="rtext">Each driver declares its channels — key, unit, precision, plausible range — and channel rows are reconciled from that declaration at startup.</span></li>
+        <li><span class="rid">DATA-3</span><span class="rtext">Rules and the UI reference channels by <code>role</code> (<code>soil_moisture</code>, <code>air_temp</code>, <code>light</code>, …), never by sensor or driver identity.</span></li>
+        <li><span class="rid">DATA-4</span><span class="rtext">Every node carries <code>stale_after_s</code>; a node with no reading inside that window is reported offline rather than silently assumed current.</span></li>
+        <li><span class="rid">DATA-5</span><span class="rtext">A plant carries its own care profile — target moisture band, DLI target, notes — and inherits zone defaults where unset.</span></li>
+        <li><span class="rid">DATA-6</span><span class="rtext">Readings carry a <code>quality</code> flag so a retried or out-of-range sample is recorded rather than discarded, and can be excluded from model fitting later.</span></li>
+      </ul>
+    </section>
+
+    <!-- ============ 5 STORAGE ============ -->
+    <section id="storage">
+      <h2><span class="num">05</span>Storage</h2>
+      <p class="lede">Narrow rows, tiered retention, and a migration path that does not involve hand-editing DDL.</p>
+
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Tier</th><th class="mono">Resolution</th><th class="mono">Retained</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td><span class="lname">Raw</span></td><td class="mono">10 s / 60 s</td><td class="mono">7 days</td><td>Live view, short-window trends, incident forensics.</td></tr>
+            <tr><td><span class="lname">Minute</span></td><td class="mono">1 min</td><td class="mono">90 days</td><td>Charts beyond a day; the primary Phase 2 training resolution.</td></tr>
+            <tr><td><span class="lname">Quarter-hour</span></td><td class="mono">15 min</td><td class="mono">indefinite</td><td>Season-over-season comparison. Roughly 35 MB per channel-year.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>
+        Sample rates are per channel, not global: light and air change quickly and are read every 10 seconds;
+        soil moisture moves slowly and is read every 60. At roughly ten channels that is on the order of
+        1–2 GB of raw data per year before rollup — immaterial on a 256 GB NVMe, but enough to make
+        unbounded raw retention a slow-query problem within a couple of years.
+      </p>
+
+      <ul class="reqs">
+        <li><span class="rid">STOR-1</span><span class="rtext">Schema changes are numbered SQL migration files applied in order and recorded in a <code>schema_migrations</code> table. There is exactly one source of schema truth.</span></li>
+        <li><span class="rid">STOR-2</span><span class="rtext">A rollup job runs on a schedule, is idempotent, and is safe to re-run over an already-rolled window.</span></li>
+        <li><span class="rid">STOR-3</span><span class="rtext">Rollups store min, max, mean and sample count — not just mean — so variability survives downsampling.</span></li>
+        <li><span class="rid">STOR-4</span><span class="rtext">Nightly <code>VACUUM INTO</code> backup to a separate path on the NVMe, with a retention count and a documented restore command that is tested at least once.</span></li>
+        <li><span class="rid">STOR-5</span><span class="rtext">An export command produces joined CSV or Parquet — readings, decisions, actuations, outcomes — suitable for direct use in a notebook.</span></li>
+        <li><span class="rid">STOR-6</span><span class="rtext">All timestamps stored UTC, ISO-8601, timezone-aware. Local time exists only at display and at watering-window evaluation.</span></li>
+      </ul>
+    </section>
+
+    <!-- ============ 6 SENSING ============ -->
+    <section id="sensing">
+      <h2><span class="num">06</span>Sensing</h2>
+      <p class="lede">Drivers are plugins. Failure is expected and recorded rather than thrown away.</p>
+
+      <pre><span class="c"># config/sensors.toml — adding a sensor is this, plus a driver file</span>
+
+[[sensor]]
+node    = <span class="s">"pi-local"</span>
+driver  = <span class="s">"seesaw_soil"</span>
+address = <span class="s">"0x36"</span>
+mux_channel = 0
+interval_s  = 60
+roles   = { moisture = <span class="s">"soil_moisture"</span>, temperature = <span class="s">"soil_temp"</span> }
+zone    = <span class="s">"windowsill"</span>
+plant   = <span class="s">"monstera"</span></pre>
+
+      <ul class="reqs">
+        <li><span class="rid">SENS-1</span><span class="rtext">A driver implements <code>channels()</code> and <code>read()</code> and registers itself by name. Nothing else in the codebase enumerates driver types.</span></li>
+        <li><span class="rid">SENS-2</span><span class="rtext">A failed read is retried with backoff, then recorded as a failure against that sensor. One dead sensor must not stall the loop or block other sensors.</span></li>
+        <li><span class="rid">SENS-3</span><span class="rtext">Readings outside a channel's declared plausible range are stored flagged, not silently dropped and not silently trusted.</span></li>
+        <li><span class="rid">SENS-4</span><span class="rtext">TCA9548A multiplexer support is in the driver layer from the start, since Seesaw offers only four addresses and the target is dozens of plants.</span></li>
+        <li><span class="rid">SENS-5</span><span class="rtext">VEML7700 gain and integration time are configured explicitly and recorded, because lux is meaningless without them.</span></li>
+        <li><span class="rid">SENS-6</span><span class="rtext">BME680 gas resistance is read and stored but not used for control. It requires burn-in and is not yet calibrated to anything meaningful.</span></li>
+        <li><span class="rid">SENS-7</span><span class="rtext">Simulated drivers model soil drying as a function of VPD and light rather than emitting noise, so the control loop can be exercised realistically without hardware.</span></li>
+        <li><span class="rid">SENS-8</span><span class="rtext">A <code>doctor</code> command scans the I2C bus, walks multiplexer channels, and reports which configured sensors answered and which did not.</span></li>
+      </ul>
+
+      <div class="note warn">
+        <span class="tag">Calibration required before automation</span>
+        <p>
+          The Seesaw sensor reports roughly 200–2000 capacitance counts. The previous system's
+          stress threshold of 350 is close to &ldquo;probe in open air&rdquo;. Thresholds must be derived from
+          several days of logged readings on the actual plant in its actual soil, not carried over.
+          Until then, run with automation disabled and observe.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============ 7 CONTROL ============ -->
+    <section id="control">
+      <h2><span class="num">07</span>Control</h2>
+      <p class="lede">Fixed thresholds in Phase 1. Legible decisions, so Phase 2 has something to improve on.</p>
+
+      <p>
+        Phase 1 control is deliberately simple: threshold irrigation with hysteresis, and light supplemented
+        against a daily light integral target. No learning, no adaptation. Every decision is written to the
+        database with the inputs it saw and a human-readable reason, which is both the debugging surface and
+        the Phase 2 baseline.
+      </p>
+
+      <h3>Irrigation</h3>
+      <ul class="reqs">
+        <li><span class="rid">CTRL-1</span><span class="rtext">Irrigate when the zone's soil-moisture role falls below the plant's low threshold; stop at the high threshold. The band is explicit — a single threshold causes oscillation.</span></li>
+        <li><span class="rid">CTRL-2</span><span class="rtext">Pulse duration in Phase 1 is a fixed per-zone configured value. Dose calculation from a learned absorption model is Phase 2.</span></li>
+        <li><span class="rid">CTRL-3</span><span class="rtext">After a pulse, a settling period is enforced during which moisture is recorded but no new irrigation decision is made. This both prevents overwatering and produces clean pre/post pairs for CTRL-9.</span></li>
+      </ul>
+
+      <h3>Lighting by daily light integral</h3>
+      <p>
+        Rather than switching on below a lux threshold, the system integrates measured light through the day
+        into <abbr title="mol of photons per square metre per day">mol·m⁻²·d⁻¹</abbr> and supplements only
+        enough to reach each plant's DLI target before the photoperiod closes. This is how horticulture
+        actually measures light, it uses the VEML7700 data you already collect, and it does not run the lamp
+        on a bright afternoon merely because a cloud passed.
+      </p>
+      <ul class="reqs">
+        <li><span class="rid">CTRL-4</span><span class="rtext">Accumulate measured illuminance into a daily light integral per plant, reset at local midnight.</span></li>
+        <li><span class="rid">CTRL-5</span><span class="rtext">Supplement only within the configured photoperiod, only when the projected end-of-day DLI falls short of target.</span></li>
+        <li><span class="rid">CTRL-6</span><span class="rtext">The lux-to-PPFD conversion factor is configurable per fixture and its assumption is documented, since it is spectrum-dependent and approximate.</span></li>
+        <li><span class="rid">CTRL-7</span><span class="rtext">Lighting switches carry a minimum dwell time so passing cloud cannot chatter the relay.</span></li>
+      </ul>
+
+      <h3>Decision logging</h3>
+      <ul class="reqs">
+        <li><span class="rid">CTRL-8</span><span class="rtext">Every tick writes a decision row: inputs considered, action chosen, and a reason string legible without reading source code.</span></li>
+        <li><span class="rid">CTRL-9</span><span class="rtext">Every actuation records pre-state, commanded duration, actual duration, and post-state after the settling window — the labelled pairs Phase 2 needs.</span></li>
+        <li><span class="rid">CTRL-10</span><span class="rtext">Vapour pressure deficit is computed from temperature and humidity and stored as a derived channel on every tick. It is the physical driver of transpiration and the strongest feature available for Phase 2.</span></li>
+      </ul>
+    </section>
+
+    <!-- ============ 8 SAFETY ============ -->
+    <section id="safety">
+      <h2><span class="num">08</span>Safety</h2>
+      <p class="lede">Three independent layers, because the failure mode is water on your floor while you are away.</p>
+
+      <figure>
+        <div class="figframe">
+          <svg viewBox="0 0 940 345" role="img" aria-label="A watering intent passes from the rule through config guards, which clamp eight seconds to six against the remaining daily budget, then through the driver's own hard limit, before the relay switches on. Separately, a watchdog thread and systemd's stop hook can force the relay off without the control loop's involvement.">
+            <defs>
+              <marker id="a3" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="9" markerHeight="7" orient="auto-start-reverse">
+                <polygon points="0,0 10,4 0,8" fill="currentColor"/>
+              </marker>
+            </defs>
+
+            <rect x="30" y="58" width="168" height="84" rx="3" class="svg-fill-surface svg-stroke" stroke-width="1"/>
+            <text x="114" y="86" text-anchor="middle" class="svg-label" font-size="12.5" font-weight="600">Rule</text>
+            <text x="114" y="107" text-anchor="middle" class="svg-sub" font-size="10.5">below low band</text>
+            <text x="114" y="126" text-anchor="middle" class="svg-sub" font-size="10.5">proposes 8.0 s</text>
+
+            <rect x="268" y="58" width="196" height="84" rx="3" class="svg-fill-surface svg-stroke" stroke-width="1"/>
+            <text x="366" y="86" text-anchor="middle" class="svg-label" font-size="12.5" font-weight="600">Config guards</text>
+            <text x="366" y="107" text-anchor="middle" class="svg-sub" font-size="10.5">window · budget</text>
+            <text x="366" y="126" text-anchor="middle" class="svg-sub" font-size="10.5">rate · cooldown</text>
+
+            <rect x="534" y="58" width="176" height="84" rx="3" class="svg-fill-surface svg-stroke" stroke-width="1"/>
+            <text x="622" y="86" text-anchor="middle" class="svg-label" font-size="12.5" font-weight="600">Driver limit</text>
+            <text x="622" y="107" text-anchor="middle" class="svg-sub" font-size="10.5">max_on_s = 10</text>
+            <text x="622" y="126" text-anchor="middle" class="svg-sub" font-size="10.5">enforced in driver</text>
+
+            <rect x="780" y="58" width="130" height="84" rx="3" class="svg-fill-surface" stroke="currentColor" stroke-width="1.6"/>
+            <text x="845" y="94" text-anchor="middle" class="svg-label" font-size="12.5" font-weight="600">Valve ON</text>
+            <text x="845" y="115" text-anchor="middle" class="svg-sub" font-size="10.5">6.0 s</text>
+
+            <rect x="268" y="242" width="220" height="72" rx="3" class="svg-fill-panel" stroke="currentColor" stroke-opacity=".45" stroke-width="1" stroke-dasharray="4 3"/>
+            <text x="378" y="268" text-anchor="middle" class="svg-label" font-size="12.5" font-weight="600">Watchdog thread</text>
+            <text x="378" y="288" text-anchor="middle" class="svg-sub" font-size="10.5">independent of loop</text>
+
+            <rect x="556" y="242" width="354" height="72" rx="3" class="svg-fill-panel" stroke="currentColor" stroke-opacity=".45" stroke-width="1" stroke-dasharray="4 3"/>
+            <text x="733" y="268" text-anchor="middle" class="svg-label" font-size="12.5" font-weight="600">systemd ExecStopPost</text>
+            <text x="733" y="288" text-anchor="middle" class="svg-sub" font-size="10.5">panic_off.py · no imports</text>
+
+            <g stroke="currentColor" stroke-width="1.3" fill="none" marker-end="url(#a3)">
+              <line x1="198" y1="100" x2="264" y2="100"/>
+              <line x1="464" y1="100" x2="530" y2="100"/>
+              <line x1="710" y1="100" x2="776" y2="100"/>
+              <path d="M488 278 L640 278 L640 176 L818 176 L818 146"/>
+              <path d="M880 242 L880 146"/>
+            </g>
+
+            <g class="svg-edge" font-size="10.5" text-anchor="middle">
+              <text x="231" y="92">8.0 s</text>
+              <text x="497" y="92">6.0 s</text>
+              <text x="497" y="106">budget</text>
+              <text x="743" y="92">6.0 s</text>
+              <text x="700" y="168">force-off at T+max</text>
+              <text x="880" y="200" text-anchor="end">on stop</text>
+            </g>
+          </svg>
+        </div>
+        <figcaption>
+          <b>Guards only ever subtract.</b> A guard may veto an action or shorten it; none can extend one or
+          create one. The two dashed paths are the ones that matter most: both reach the hardware
+          <em>without</em> the control loop participating, which is exactly the condition under which
+          a stuck valve happens.
+        </figcaption>
+      </figure>
+
+      <ul class="reqs">
+        <li><span class="rid">SAFE-1</span><span class="rtext">Guards are pure functions that can only veto or reduce. No guard may lengthen or create an actuation. This is enforced by test.</span></li>
+        <li><span class="rid">SAFE-2</span><span class="rtext">Every device declares <code>max_on_seconds</code>, enforced inside the driver itself regardless of what the caller requests.</span></li>
+        <li><span class="rid">SAFE-3</span><span class="rtext">A watchdog thread independent of the control loop tracks on-time per device and forces off anything past its limit.</span></li>
+        <li><span class="rid">SAFE-4</span><span class="rtext">SIGTERM and <code>atexit</code> handlers drive every output to its safe state, and <code>ExecStopPost</code> runs a standalone script that does the same without importing the application.</span></li>
+        <li><span class="rid">SAFE-5</span><span class="rtext">Outputs initialise to off at startup and are asserted off before the first control decision.</span></li>
+        <li><span class="rid">SAFE-6</span><span class="rtext">Per-zone daily water budget and per-hour pulse cap, both evaluated in the zone's local timezone with correct DST handling.</span></li>
+        <li><span class="rid">SAFE-7</span><span class="rtext">A global pause switch, settable from the UI, stops all automation while continuing to record. Manual commands are also blocked while paused.</span></li>
+        <li><span class="rid">SAFE-8</span><span class="rtext">Relay polarity (<code>active_low</code>) is configurable per device, defaults to the safe interpretation, and is verified by the <code>doctor</code> command before automation is enabled.</span></li>
+      </ul>
+    </section>
+
+    <!-- ============ 9 INTERFACE ============ -->
+    <section id="interface">
+      <h2><span class="num">09</span>Interface</h2>
+      <p class="lede">JSON API first; the PWA is its first consumer and the Phase 3 app will be its second.</p>
+
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>View</th><th>Answers</th><th>Primary surface</th></tr></thead>
+          <tbody>
+            <tr><td><span class="lname">Plant cards</span></td><td>Is anything thirsty right now?</td><td>Phone, at a glance</td></tr>
+            <tr><td><span class="lname">History charts</span></td><td>What has moisture done, and did watering change it?</td><td>Laptop</td></tr>
+            <tr><td><span class="lname">System health</span></td><td>Is anything offline or failing to read?</td><td>Phone, while away</td></tr>
+            <tr><td><span class="lname">Decision log</span></td><td>Why did it — or didn't it — water?</td><td>Either</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <ul class="reqs">
+        <li><span class="rid">API-1</span><span class="rtext">The web layer returns JSON only. No HTML is templated from application state; the PWA is served as static assets.</span></li>
+        <li><span class="rid">API-2</span><span class="rtext">Channel and role metadata is served from an endpoint, so a new sensor appears in the UI without a front-end change.</span></li>
+        <li><span class="rid">API-3</span><span class="rtext">Time-series endpoints select the appropriate rollup tier for the requested range automatically.</span></li>
+        <li><span class="rid">API-4</span><span class="rtext">Token authentication is implemented and disabled by default, enabled by a single config value should the service ever be exposed beyond the tailnet.</span></li>
+        <li><span class="rid">UI-1</span><span class="rtext">Mobile-first layout, installable as a PWA with manifest, icons and a service worker that caches the shell.</span></li>
+        <li><span class="rid">UI-2</span><span class="rtext">The most recent readings remain visible when the network drops, clearly marked with their age rather than presented as current.</span></li>
+        <li><span class="rid">UI-3</span><span class="rtext">Plant thresholds, windows, budgets and DLI targets are editable from the interface and take effect without a restart.</span></li>
+        <li><span class="rid">UI-4</span><span class="rtext">Manual water and light actions are available per zone, clearly labelled as still subject to safety guards.</span></li>
+        <li><span class="rid">UI-5</span><span class="rtext">Temperature unit is a display toggle; all storage and computation remain SI.</span></li>
+        <li><span class="rid">UI-6</span><span class="rtext">Charts mark irrigation events on the time axis, so cause and effect are readable in one glance.</span></li>
+      </ul>
+    </section>
+
+    <!-- ============ 10 OPERATIONS ============ -->
+    <section id="operations">
+      <h2><span class="num">10</span>Operations</h2>
+      <p class="lede">Configuration split by how often it changes and who needs to change it.</p>
+
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Setting class</th><th>Lives in</th><th>Changed by</th><th>Applies</th></tr></thead>
+          <tbody>
+            <tr><td><span class="lname">Hardware topology</span><br><span style="color:var(--muted);font-size:.85em">pins, addresses, mux channels, nodes</span></td><td class="mono">TOML, in git</td><td>Editor + commit</td><td class="mono">on restart</td></tr>
+            <tr><td><span class="lname">Tuning</span><br><span style="color:var(--muted);font-size:.85em">thresholds, windows, budgets, DLI</span></td><td class="mono">SQLite</td><td>The UI, from a phone</td><td class="mono">next tick</td></tr>
+            <tr><td><span class="lname">Secrets</span><br><span style="color:var(--muted);font-size:.85em">ntfy topic, Telegram token</span></td><td class="mono">.env, never committed</td><td>Editor</td><td class="mono">on restart</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <ul class="reqs">
+        <li><span class="rid">OPS-1</span><span class="rtext">Two systemd units with restart-on-failure, journald logging, and <code>ExecStopPost</code> safety hooks on the control unit.</span></li>
+        <li><span class="rid">OPS-2</span><span class="rtext">Structured logging via the standard <code>logging</code> module throughout. No <code>print</code> statements in application code.</span></li>
+        <li><span class="rid">OPS-3</span><span class="rtext">Configuration is validated at startup with clear, specific errors. An invalid config fails loudly rather than falling back to a default that waters something.</span></li>
+        <li><span class="rid">OPS-4</span><span class="rtext">Notifications go through a pluggable notifier: in-app always on, ntfy and Telegram enabled by environment variable.</span></li>
+        <li><span class="rid">OPS-5</span><span class="rtext">Alert conditions at minimum: node offline, sensor read failures over threshold, moisture critical, watering blocked by budget, and irrigation with no measurable moisture response.</span></li>
+        <li><span class="rid">OPS-6</span><span class="rtext">Alerts are debounced and rate-limited per condition. An alerting system that cries wolf gets muted, which is worse than none.</span></li>
+        <li><span class="rid">OPS-7</span><span class="rtext"><code>docs/</code> contains a parts list with rough prices, relay and valve-manifold wiring diagrams, mains and pump safety notes, and an operational runbook.</span></li>
+        <li><span class="rid">OPS-8</span><span class="rtext">Pure-logic tests run without hardware or a Pi. Guards, rules, DLI accumulation, VPD, rollups and unit conversion all carry tests.</span></li>
+      </ul>
+    </section>
+
+    <!-- ============ 11 PHASE 2 ============ -->
+    <section id="phase2">
+      <h2><span class="num">11</span>Phase 2 hooks</h2>
+      <p class="lede">One target chosen: forecasting how fast soil dries. Everything here exists to make that possible later.</p>
+
+      <p>
+        The chosen Phase 2 direction is <strong>moisture decay forecasting</strong> — predicting time-to-stress
+        from current moisture, VPD, light and soil temperature, rather than extrapolating a straight line
+        through the last two readings. Nothing in Phase 1 implements it. What Phase 1 must do is produce
+        data of the right shape, because that cannot be backfilled.
+      </p>
+
+      <ul class="reqs">
+        <li><span class="rid">ML-1</span><span class="rtext">VPD is computed and stored on every tick as a first-class derived channel, not recomputed at fit time from possibly-rolled-up inputs.</span></li>
+        <li><span class="rid">ML-2</span><span class="rtext">Irrigation events carry explicit start and end boundaries plus a settling window, so drying segments between waterings can be extracted unambiguously.</span></li>
+        <li><span class="rid">ML-3</span><span class="rtext">Pre-state, commanded duration, actual duration and post-state are recorded per actuation — the labelled examples a dose–response model would need if that direction is picked up later.</span></li>
+        <li><span class="rid">ML-4</span><span class="rtext">The quality flag from DATA-6 makes suspect samples excludable at fit time without deleting them.</span></li>
+        <li><span class="rid">ML-5</span><span class="rtext">Minute-resolution data is retained 90 days, which is the training resolution and horizon a first model needs.</span></li>
+        <li><span class="rid">ML-6</span><span class="rtext">The decision table records what the system believed at decision time, so a future model can be evaluated against the rule baseline on identical history.</span></li>
+      </ul>
+
+      <div class="note">
+        <span class="tag">Sequencing</span>
+        <p>
+          No model is fitted until there are several weeks of data across varied conditions. Until then
+          the rule baseline is the system, and its decision log is the benchmark any model has to beat.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============ 12 BUILD ============ -->
+    <section id="build">
+      <h2><span class="num">12</span>Build plan</h2>
+      <p class="lede">Six layers, each reviewed before the next. Dependencies run strictly downward.</p>
+
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th class="mono">#</th><th>Layer</th><th>Contents</th><th>Satisfies</th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="mono">01</td>
+              <td><span class="lname">Foundation</span></td>
+              <td>Project skeleton, <code>pyproject.toml</code>, config loading and validation, core dataclasses, physics — VPD, dew point, DLI, unit conversion. This document committed to <code>docs/</code>.</td>
+              <td class="mono">PLAT-1…4, ARCH-4, CTRL-10</td>
+            </tr>
+            <tr>
+              <td class="mono">02</td>
+              <td><span class="lname">Storage</span></td>
+              <td>Migration runner and initial schema, repositories, rollup job, backup, export command.</td>
+              <td class="mono">DATA-1…6, STOR-1…6</td>
+            </tr>
+            <tr>
+              <td class="mono">03</td>
+              <td><span class="lname">Drivers</span></td>
+              <td>Protocols and registry, BME680, VEML7700, Seesaw, TCA9548A, simulated sensors and actuators, <code>doctor</code>.</td>
+              <td class="mono">SENS-1…8, SAFE-2</td>
+            </tr>
+            <tr>
+              <td class="mono">04</td>
+              <td><span class="lname">Runtime</span></td>
+              <td>Control loop, rules, guards, watchdog, panic-off, command queue, notifiers.</td>
+              <td class="mono">CTRL-1…9, SAFE-1…8, OPS-4…6</td>
+            </tr>
+            <tr>
+              <td class="mono">05</td>
+              <td><span class="lname">API</span></td>
+              <td>FastAPI application, endpoints, ingest, systemd units, deployment runbook.</td>
+              <td class="mono">ARCH-1…3, ARCH-6, API-1…4, OPS-1…3</td>
+            </tr>
+            <tr>
+              <td class="mono">06</td>
+              <td><span class="lname">Interface</span></td>
+              <td>PWA shell, plant cards, charts, health view, decision log, settings, manifest and service worker.</td>
+              <td class="mono">UI-1…6</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>
+        Layers 1 through 3 can be exercised on a laptop. Layer 4 is the first that wants the Pi.
+        After layer 3 the recommended step is not to continue building but to
+        <strong>run the sensors for several days with automation disabled</strong> and derive real
+        thresholds from what the Seesaw actually reports in your soil — the calibration note in
+        &sect;06 is a prerequisite for layer 4 being meaningful rather than merely functional.
+      </p>
+    </section>
+
+  </main>
+
+  <footer class="end">
+    <span>SmartGarden &middot; Phase 1 &middot; Rev A</span>
+    <span>4 September 2026</span>
+    <span>72 requirements</span>
+  </footer>
+
+</div>

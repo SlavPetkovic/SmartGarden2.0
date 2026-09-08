@@ -1,0 +1,94 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "smartgarden"
+version = "0.1.0"
+description = "Sensor-driven irrigation and lighting for a Raspberry Pi"
+readme = "README.md"
+requires-python = ">=3.13"
+license = { text = "Proprietary" }
+authors = [{ name = "Slav Petkovic" }]
+
+# The control service runs unattended for months on a Pi. Its dependency tree
+# is deliberately empty: everything it needs (tomllib, sqlite3, dataclasses,
+# zoneinfo, logging) is in the standard library. Web and hardware dependencies
+# are opt-in extras below, so a failure to install one cannot stop watering.
+dependencies = []
+
+[project.optional-dependencies]
+# Everything needed to serve the dashboard and API.
+web = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.32",
+  "pydantic>=2.9",
+]
+
+# Hardware-only. Deliberately NOT a base dependency, so the test suite installs
+# and runs on a laptop. Note the absence of RPi.GPIO: it does not work on the
+# Pi 5, whose GPIO sits behind the RP1 south bridge. gpiozero with the lgpio
+# pin factory is the supported path.
+pi = [
+  "gpiozero>=2.0",
+  "lgpio>=0.2.2",
+  "adafruit-blinka>=8.44",
+  "adafruit-circuitpython-bme680>=3.7",
+  "adafruit-circuitpython-veml7700>=1.1",
+  "adafruit-circuitpython-seesaw>=1.16",
+  "adafruit-circuitpython-tca9548a>=0.7",
+]
+
+# Tests are written against unittest.TestCase, so `python -m unittest discover`
+# runs the whole suite with no dependencies at all. pytest collects them
+# unchanged and gives nicer output; install it when convenient.
+dev = [
+  "pytest>=8.3",
+  "pytest-cov>=6.0",
+  "ruff>=0.8",
+  "mypy>=1.13",
+]
+
+[project.scripts]
+smartgarden = "smartgarden.cli:main"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+smartgarden = ["py.typed"]
+
+# ---------------------------------------------------------------------------
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+markers = [
+  "hardware: requires a Raspberry Pi with sensors attached (deselect with -m 'not hardware')",
+]
+
+[tool.ruff]
+line-length = 90
+target-version = "py313"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.mypy]
+python_version = "3.13"
+packages = ["smartgarden"]
+strict = true
+warn_unreachable = true
+
+[[tool.mypy.overrides]]
+# Hardware libraries ship no type information.
+module = ["board.*", "busio.*", "adafruit_*.*", "gpiozero.*", "lgpio.*"]
+ignore_missing_imports = true
+
+[tool.coverage.run]
+source = ["smartgarden"]
+branch = true
