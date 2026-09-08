@@ -25,8 +25,9 @@ is a blocking finding.
 
 **SAFE-1 — guards only ever subtract.** A safety guard may veto an actuation or
 shorten it. It may never lengthen one, create one, or raise a limit. For any
-change under `runtime/` that touches a duration, `max_on_seconds`, a cooldown
-or a budget: the effect must only ever make a pulse shorter or rarer.
+change under `runtime/` that touches an actuation duration, an on-time ceiling,
+an off-time floor, a cooldown or a budget: the effect must only ever make a
+pulse shorter or rarer.
 
 **DATA-1 — measurements are rows, not columns.** One row per
 `(channel, timestamp, value)`. A migration or model change that adds a column
@@ -56,9 +57,10 @@ token followed by a real reason on the same line. Flag any that is missing:
 
 - edits `config/app.toml`, `config/plants.toml` or `config/devices.toml`
   → `TUNING-CHANGE:`
-- touches a safety constant — `max_on_seconds`, `min_off_seconds`, `cooldown*`,
-  `daily_cap` / `daily_budget` / `daily_limit*`, `plausible*`, `watchdog*`,
-  `panic_off` → `SAFETY-CHANGE:`
+- touches a safety constant — the exact identifiers are the `SAFETY_PATTERN`
+  regex in `scripts/diff_gate.py` (on-time / off-time limits, cooldowns, daily
+  budgets, plausible-range bounds, the watchdog, panic-off); grep that pattern
+  for the authoritative list → `SAFETY-CHANGE:`
 - edits `docs/architecture.html`, `docs/BUILD-PLAN.md`, `CLAUDE.md` or
   `docs/git-workflow.md` → `CONTRACT-CHANGE:`, and it must be its own pull
   request, not mixed with the code whose gate it moves
