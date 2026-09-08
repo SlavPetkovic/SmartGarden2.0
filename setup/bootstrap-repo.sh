@@ -304,9 +304,10 @@ cat <<EOF
 
                  git clone https://github.com/$OWNER/$NAME.git ~/SmartGarden
                  cd ~/SmartGarden
-                 mkdir -p .claude/commands
+                 mkdir -p .claude/commands .claude/agents
                  cp setup/claude/settings.json          .claude/settings.json
                  cp setup/claude/commands/*.md          .claude/commands/
+                 cp setup/claude/agents/*.md            .claude/agents/
                  python3 -m venv .venv && .venv/bin/pip install -e ".[pi,web,dev]"
                  gh auth login          # Claude Code pushes and merges as you
                  claude

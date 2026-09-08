@@ -67,6 +67,11 @@ reason on the same line: tuning (`TUNING-CHANGE:`), safety constants
 removing tests (`TEST-REMOVAL:`). None of them is forbidden. All of them are
 forbidden to do quietly. `scripts/diff_gate.py` enforces it.
 
+**A read-only `code-reviewer` subagent** (`setup/claude/agents/`, runs on Haiku)
+checks a diff against the hard rules above and these declaration tripwires — it
+runs automatically whenever a diff or pull request is being reviewed, and on
+demand via `/review`.
+
 **"What I was unsure about" is not optional.** Every pull request has that
 section. In a repository where pull requests merge themselves it is the only
 place doubt has anywhere to go — what was guessed, what was assumed about the
