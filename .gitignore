@@ -7,6 +7,9 @@ data/
 # Secrets
 .env
 
+# Local Claude Code settings override (per-machine; may hold local allow rules)
+.claude/settings.local.json
+
 # Python
 __pycache__/
 *.py[cod]
