@@ -16,18 +16,24 @@ from smartgarden.core.units import (
 
 
 class TestTemperature(unittest.TestCase):
-    PAIRS = [(0.0, 32.0), (100.0, 212.0), (-40.0, -40.0), (21.0, 69.8)]
+    PAIRS = ((0.0, 32.0), (100.0, 212.0), (-40.0, -40.0), (21.0, 69.8))
 
     def test_conversion(self) -> None:
         for celsius, fahrenheit in self.PAIRS:
             with self.subTest(celsius=celsius):
-                self.assertAlmostEqual(celsius_to_fahrenheit(celsius), fahrenheit, places=6)
-                self.assertAlmostEqual(fahrenheit_to_celsius(fahrenheit), celsius, places=6)
+                self.assertAlmostEqual(
+                    celsius_to_fahrenheit(celsius), fahrenheit, places=6
+                )
+                self.assertAlmostEqual(
+                    fahrenheit_to_celsius(fahrenheit), celsius, places=6
+                )
 
     def test_round_trips(self) -> None:
         for c in (-15.5, 0.0, 22.3, 38.9):
             with self.subTest(c=c):
-                self.assertAlmostEqual(fahrenheit_to_celsius(celsius_to_fahrenheit(c)), c, places=9)
+                self.assertAlmostEqual(
+                    fahrenheit_to_celsius(celsius_to_fahrenheit(c)), c, places=9
+                )
 
     def test_formatting(self) -> None:
         self.assertEqual(format_temperature(21.34), "21.3°C")
@@ -44,7 +50,7 @@ class TestPressure(unittest.TestCase):
 
 
 class TestFormatDuration(unittest.TestCase):
-    CASES = [
+    CASES = (
         (6.0, "6s"),
         (6.5, "6.5s"),
         (59.9, "59.9s"),
@@ -54,7 +60,7 @@ class TestFormatDuration(unittest.TestCase):
         (3720.0, "1h 2m"),
         (8040.0, "2h 14m"),
         (90000.0, "1d 1h"),
-    ]
+    )
 
     def test_formats(self) -> None:
         for seconds, expected in self.CASES:

@@ -207,7 +207,9 @@ class TestActuation(unittest.TestCase):
 
 class TestCommand(unittest.TestCase):
     def test_pending_until_consumed(self) -> None:
-        self.assertTrue(Command(id=1, at=NOW, kind=CommandKind.WATER_NOW, zone="z").pending)
+        self.assertTrue(
+            Command(id=1, at=NOW, kind=CommandKind.WATER_NOW, zone="z").pending
+        )
 
     def test_not_pending_once_consumed(self) -> None:
         cmd = Command(id=1, at=NOW, kind=CommandKind.WATER_NOW, zone="z", consumed_at=NOW)

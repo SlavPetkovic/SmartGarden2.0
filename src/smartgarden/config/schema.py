@@ -32,12 +32,12 @@ from smartgarden.core.models import (
 
 __all__ = [
     "AppConfig",
+    "Config",
+    "DeviceConfig",
     "NodeConfig",
+    "PlantConfig",
     "SensorConfig",
     "ZoneConfig",
-    "DeviceConfig",
-    "PlantConfig",
-    "Config",
 ]
 
 
@@ -72,36 +72,58 @@ class _Table:
     def bool_(self, key: str, default: bool) -> bool:
         value = self._get(key, default)
         if not isinstance(value, bool):
-            raise ConfigError(f"{self.where}.{key}: expected true or false, got {value!r}")
+            raise ConfigError(
+                f"{self.where}.{key}: expected true or false, got {value!r}"
+            )
         return value
 
-    def int_(self, key: str, default: int | None = None, *, lo: int | None = None,
-             hi: int | None = None) -> int:
+    def int_(
+        self,
+        key: str,
+        default: int | None = None,
+        *,
+        lo: int | None = None,
+        hi: int | None = None,
+    ) -> int:
         value = self._get(key, default)
         if isinstance(value, bool) or not isinstance(value, int):
-            raise ConfigError(f"{self.where}.{key}: expected a whole number, got {value!r}")
+            raise ConfigError(
+                f"{self.where}.{key}: expected a whole number, got {value!r}"
+            )
         self._range(key, value, lo, hi)
         return value
 
-    def float_(self, key: str, default: float | None = None, *, lo: float | None = None,
-               hi: float | None = None, exclusive_lo: bool = False) -> float:
+    def float_(
+        self,
+        key: str,
+        default: float | None = None,
+        *,
+        lo: float | None = None,
+        hi: float | None = None,
+        exclusive_lo: bool = False,
+    ) -> float:
         value = self._get(key, default)
         if isinstance(value, bool) or not isinstance(value, (int, float)):
             raise ConfigError(f"{self.where}.{key}: expected a number, got {value!r}")
         number = float(value)
         if exclusive_lo and lo is not None and number <= lo:
-            raise ConfigError(f"{self.where}.{key}: must be greater than {lo}, got {number}")
+            raise ConfigError(
+                f"{self.where}.{key}: must be greater than {lo}, got {number}"
+            )
         self._range(key, number, None if exclusive_lo else lo, hi)
         return number
 
-    def opt_float(self, key: str, *, lo: float | None = None,
-                  exclusive_lo: bool = False) -> float | None:
+    def opt_float(
+        self, key: str, *, lo: float | None = None, exclusive_lo: bool = False
+    ) -> float | None:
         if key not in self.raw:
             self._seen.add(key)
             return None
         return self.float_(key, lo=lo, exclusive_lo=exclusive_lo)
 
-    def opt_int(self, key: str, *, lo: int | None = None, hi: int | None = None) -> int | None:
+    def opt_int(
+        self, key: str, *, lo: int | None = None, hi: int | None = None
+    ) -> int | None:
         if key not in self.raw:
             self._seen.add(key)
             return None
@@ -241,8 +263,9 @@ class NodeConfig:
             slug=t.str_("slug"),
             kind=t.str_("kind", "local"),
             description=t.str_("description", ""),
-            stale_after_seconds=t.float_("stale_after_seconds", 180.0, lo=0.0,
-                                         exclusive_lo=True),
+            stale_after_seconds=t.float_(
+                "stale_after_seconds", 180.0, lo=0.0, exclusive_lo=True
+            ),
         )
         t.done()
         return node
@@ -283,7 +306,9 @@ class SensorConfig:
             address=t.opt_int("address", lo=0, hi=0x7F),
             mux_address=t.opt_int("mux_address", lo=0, hi=0x7F),
             mux_channel=t.opt_int("mux_channel", lo=0, hi=7),
-            interval_seconds=t.float_("interval_seconds", 10.0, lo=0.0, exclusive_lo=True),
+            interval_seconds=t.float_(
+                "interval_seconds", 10.0, lo=0.0, exclusive_lo=True
+            ),
             zone=t.opt_str("zone"),
             plant=t.opt_str("plant"),
             enabled=t.bool_("enabled", True),
@@ -584,7 +609,8 @@ class Config:
         self, zone_slug: str, kind: ActionKind | None = None
     ) -> tuple[DeviceConfig, ...]:
         return tuple(
-            d for d in self.devices
+            d
+            for d in self.devices
             if d.zone == zone_slug and (kind is None or d.kind is kind)
         )
 

@@ -20,7 +20,7 @@ from smartgarden.core.physics import (
     vapour_pressure_deficit,
 )
 
-__all__ = ["main", "build_parser"]
+__all__ = ["build_parser", "main"]
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -28,7 +28,9 @@ def build_parser() -> argparse.ArgumentParser:
         prog="smartgarden",
         description="Sensor-driven irrigation and lighting for a Raspberry Pi.",
     )
-    parser.add_argument("--version", action="version", version=f"smartgarden {__version__}")
+    parser.add_argument(
+        "--version", action="version", version=f"smartgarden {__version__}"
+    )
     parser.add_argument(
         "--config-dir",
         type=Path,
@@ -41,7 +43,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     config_cmd = sub.add_parser("config", help="inspect configuration")
     config_sub = config_cmd.add_subparsers(dest="config_command", required=True)
-    config_sub.add_parser("check", help="validate the configuration and report what it describes")
+    config_sub.add_parser(
+        "check", help="validate the configuration and report what it describes"
+    )
 
     physics_cmd = sub.add_parser(
         "physics", help="compute derived values from a temperature/humidity/lux triple"
@@ -81,7 +85,10 @@ def _cmd_config_check(config_dir: Path) -> int:
                 if plant.moisture_low is not None and plant.moisture_high is not None
                 else "not set"
             )
-            print(f"    plant  {plant.name:<16} moisture {band:<12} dli {plant.dli_target_moles}")
+            print(
+                f"    plant  {plant.name:<16} moisture {band:<12} "
+                f"dli {plant.dli_target_moles}"
+            )
         for device in devices:
             sim = "  (simulated)" if device.driver == "simulated" else ""
             print(

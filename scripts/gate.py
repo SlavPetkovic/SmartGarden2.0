@@ -140,9 +140,11 @@ def check_core_purity() -> Result:
                 # datetime.now() / datetime.utcnow(): core reads no clock; the
                 # time it reasons about is passed in, which is what makes a
                 # decision reproducible in a test.
-                if isinstance(fn, ast.Attribute) and fn.attr in {"now", "utcnow", "today"}:
+                clock_attrs = {"now", "utcnow", "today"}
+                if isinstance(fn, ast.Attribute) and fn.attr in clock_attrs:
                     owner = fn.value
-                    if isinstance(owner, ast.Name) and owner.id in {"datetime", "date", "time"}:
+                    clock_types = {"datetime", "date", "time"}
+                    if isinstance(owner, ast.Name) and owner.id in clock_types:
                         r.failures.append(
                             f"{rel(path)}:{node.lineno}: core reads the clock via "
                             f"{owner.id}.{fn.attr}() -- pass the time in instead"
@@ -162,7 +164,9 @@ def check_core_purity() -> Result:
 
 def check_no_rpi_gpio() -> Result:
     r = Result("no RPi.GPIO", "PLAT-1, CLAUDE.md hard rule 1")
-    pattern = re.compile(r"\bRPi\.GPIO\b|\bimport\s+RPi\b|\bRPi_GPIO\b|\brpi[-_]?gpio\b", re.I)
+    pattern = re.compile(
+        r"\bRPi\.GPIO\b|\bimport\s+RPi\b|\bRPi_GPIO\b|\brpi[-_]?gpio\b", re.I
+    )
 
     for path in python_files(REPO / "src") + python_files(TESTS):
         for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
@@ -184,7 +188,9 @@ def check_no_rpi_gpio() -> Result:
             declared.extend(f"[{extra}] {d}" for d in deps)
         for dep in declared:
             if pattern.search(dep):
-                r.failures.append(f"pyproject.toml declares {dep!r} -- RPi.GPIO is not usable")
+                r.failures.append(
+                    f"pyproject.toml declares {dep!r} -- RPi.GPIO is not usable"
+                )
     return r
 
 
@@ -307,7 +313,9 @@ def main() -> int:
     print()
     if failed:
         print(f"{failed} guard rail violation(s). These are correctness bugs, not style.")
-        print("Fix the cause. Do not delete the check -- see docs/BUILD-PLAN.md section 3.")
+        print(
+            "Fix the cause. Do not delete the check -- see docs/BUILD-PLAN.md section 3."
+        )
         return 1
     print("All structural guard rails hold.")
     return 0
