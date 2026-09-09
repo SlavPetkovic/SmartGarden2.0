@@ -35,4 +35,8 @@ TUNING-CHANGE:
 SAFETY-CHANGE:
 CONTRACT-CHANGE:
 TEST-REMOVAL:
+
+     LINT-ONLY: (reason) -- only for a mechanical no-op (ruff format / --fix,
+     a type-annotation fix) that spans a gate file and src/ or tests/. It
+     suppresses the SEPARATE-PULL-REQUEST tripwire and nothing else.
 -->
