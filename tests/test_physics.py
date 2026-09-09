@@ -29,7 +29,7 @@ from smartgarden.core.physics import (
 
 class TestSaturationVapourPressure(unittest.TestCase):
     # (celsius, kPa) from standard psychrometric tables.
-    TABLE = [(0.0, 0.611), (10.0, 1.228), (20.0, 2.339), (25.0, 3.169), (30.0, 4.246)]
+    TABLE = ((0.0, 0.611), (10.0, 1.228), (20.0, 2.339), (25.0, 3.169), (30.0, 4.246))
 
     def test_matches_published_table(self) -> None:
         for celsius, expected in self.TABLE:
@@ -81,7 +81,7 @@ class TestVapourPressureDeficit(unittest.TestCase):
 
 
 class TestDewPoint(unittest.TestCase):
-    TABLE = [(25.0, 50.0, 13.86), (20.0, 80.0, 16.44), (30.0, 30.0, 10.50)]
+    TABLE = ((25.0, 50.0, 13.86), (20.0, 80.0, 16.44), (30.0, 30.0, 10.50))
 
     def test_matches_published_table(self) -> None:
         for celsius, humidity, expected in self.TABLE:

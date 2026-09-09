@@ -77,7 +77,12 @@ its merge is how the next session ends up building on top of yesterday.
 - **merge on a red or pending check**, or with `--admin`, or by disabling a check
 - **change `.github/workflows/*` or `scripts/gate.py` in the same pull request as the
   work whose gate they check** — a change to the gate goes in its own pull
-  request, on its own, saying what it changes and why
+  request, on its own, saying what it changes and why. The one exception is a
+  mechanical no-op that spans both — a formatter pass, a lint autofix, a
+  type-annotation fix that changes no behaviour — declared with a `LINT-ONLY:`
+  line in the pull request body (§4). Splitting a `ruff format` run into
+  "gate files" and "everything else" produces two meaningless diffs and a
+  broken bisect; the token is the honest alternative.
 - **run `sudo`**, or `systemctl start|stop|restart|enable|disable` — the running
   control service is not the build's to restart
 - **set `automation_enabled = true`** before the soak is signed off (§5)
@@ -106,6 +111,21 @@ TEST-REMOVAL:  test_altitude_channel deleted. altitude was never a declared
 ```
 
 A bare token with no reason after it does not clear the tripwire.
+
+A fourth token, `LINT-ONLY:`, is narrower and does the opposite job. It
+suppresses `SEPARATE-PULL-REQUEST` — the tripwire that stops a gate file and
+the `src/`/`tests/` code it judges moving together — and only that one. Use it
+when the change across both is a mechanical no-op: `ruff format`, a `ruff
+--fix` autofix, a type-annotation fix. The line says what ran and how it was
+verified (`scripts/gate.py` green, the full suite green). It does not clear
+`TUNING-CHANGE`, `SAFETY-CHANGE`, `CONTRACT-CHANGE` or `TEST-REMOVAL`; if a
+"lint" pass trips one of those, it was not a no-op.
+
+```
+LINT-ONLY: ruff --fix (RUF022 __all__ sort, RUF046) + ruff format across
+           scripts/, src/, tests/, plus one float() cast for a mypy
+           no-any-return. Guard rails and 110 tests green before and after.
+```
 
 **A tripwire is not a formality to type past.** `TUNING-CHANGE` in particular
 exists because the previous attempt shipped `moisture < 30%` with a 5 s pulse

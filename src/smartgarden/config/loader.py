@@ -30,7 +30,7 @@ from smartgarden.config.schema import (
 )
 from smartgarden.core.errors import ConfigError
 
-__all__ = ["load_config", "DEFAULT_CONFIG_DIR"]
+__all__ = ["DEFAULT_CONFIG_DIR", "load_config"]
 
 DEFAULT_CONFIG_DIR = Path("config")
 

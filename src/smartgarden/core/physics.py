@@ -18,16 +18,16 @@ __all__ = [
     "MAGNUS_A",
     "MAGNUS_B",
     "SUNLIGHT_LUX_PER_PPFD",
-    "saturation_vapour_pressure",
-    "actual_vapour_pressure",
-    "vapour_pressure_deficit",
-    "dew_point",
-    "absolute_humidity",
-    "relative_humidity_from_dew_point",
-    "lux_to_ppfd",
-    "dli_increment",
-    "pressure_to_altitude",
     "DliAccumulator",
+    "absolute_humidity",
+    "actual_vapour_pressure",
+    "dew_point",
+    "dli_increment",
+    "lux_to_ppfd",
+    "pressure_to_altitude",
+    "relative_humidity_from_dew_point",
+    "saturation_vapour_pressure",
+    "vapour_pressure_deficit",
 ]
 
 
@@ -66,9 +66,7 @@ def saturation_vapour_pressure(temperature_c: float) -> float:
     why warm air dries soil so much faster than cool air at the same relative
     humidity.
     """
-    return _ES_0C_KPA * math.exp(
-        (MAGNUS_A * temperature_c) / (temperature_c + MAGNUS_B)
-    )
+    return _ES_0C_KPA * math.exp((MAGNUS_A * temperature_c) / (temperature_c + MAGNUS_B))
 
 
 def actual_vapour_pressure(temperature_c: float, relative_humidity_pct: float) -> float:
@@ -77,9 +75,7 @@ def actual_vapour_pressure(temperature_c: float, relative_humidity_pct: float) -
     return saturation_vapour_pressure(temperature_c) * (relative_humidity_pct / 100.0)
 
 
-def vapour_pressure_deficit(
-    temperature_c: float, relative_humidity_pct: float
-) -> float:
+def vapour_pressure_deficit(temperature_c: float, relative_humidity_pct: float) -> float:
     """Vapour pressure deficit, in kPa.
 
     The difference between how much moisture the air is holding and how much it
@@ -111,9 +107,9 @@ def dew_point(temperature_c: float, relative_humidity_pct: float) -> float:
     if relative_humidity_pct <= 0.0:
         raise ValueError("dew point is undefined at 0% relative humidity")
 
-    gamma = math.log(relative_humidity_pct / 100.0) + (
-        MAGNUS_A * temperature_c
-    ) / (temperature_c + MAGNUS_B)
+    gamma = math.log(relative_humidity_pct / 100.0) + (MAGNUS_A * temperature_c) / (
+        temperature_c + MAGNUS_B
+    )
     return (MAGNUS_B * gamma) / (MAGNUS_A - gamma)
 
 
@@ -128,9 +124,7 @@ def absolute_humidity(temperature_c: float, relative_humidity_pct: float) -> flo
     return (_AH_COEFF * ea) / (temperature_c + 273.15)
 
 
-def relative_humidity_from_dew_point(
-    temperature_c: float, dew_point_c: float
-) -> float:
+def relative_humidity_from_dew_point(temperature_c: float, dew_point_c: float) -> float:
     """Relative humidity in percent, from air temperature and dew point.
 
     The inverse of :func:`dew_point`. Present so that sensors reporting dew
@@ -184,9 +178,10 @@ def pressure_to_altitude(
     """
     if pressure_kpa <= 0.0 or sea_level_kpa <= 0.0:
         raise ValueError("pressures must be positive")
-    return _ALTITUDE_COEFF * (
-        1.0 - (pressure_kpa / sea_level_kpa) ** _ALTITUDE_EXPONENT
-    )
+    # float ** float is typed as returning Any in typeshed (it can be complex
+    # for a negative base); the base here is always positive, so narrow it back.
+    ratio = (pressure_kpa / sea_level_kpa) ** _ALTITUDE_EXPONENT
+    return _ALTITUDE_COEFF * (1.0 - float(ratio))
 
 
 @dataclass(frozen=True, slots=True)
@@ -265,6 +260,4 @@ class DliAccumulator:
 
 def _check_humidity(relative_humidity_pct: float) -> None:
     if not 0.0 <= relative_humidity_pct <= 100.0:
-        raise ValueError(
-            f"relative humidity must be 0-100%, got {relative_humidity_pct}"
-        )
+        raise ValueError(f"relative humidity must be 0-100%, got {relative_humidity_pct}")

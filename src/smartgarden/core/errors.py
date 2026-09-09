@@ -9,13 +9,13 @@ a `SafetyError`, refuse to act).
 from __future__ import annotations
 
 __all__ = [
-    "SmartGardenError",
-    "ConfigError",
-    "TransientError",
-    "SensorError",
     "ActuatorError",
+    "ConfigError",
     "SafetyError",
+    "SensorError",
+    "SmartGardenError",
     "StorageError",
+    "TransientError",
 ]
 
 

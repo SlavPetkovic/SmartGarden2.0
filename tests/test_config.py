@@ -149,7 +149,7 @@ class TestFileLevelFailures(_ConfigCase):
             load_config(self.write(**{"devices.toml": bad}))
 
     def test_unknown_role_lists_the_valid_ones(self) -> None:
-        bad = SENSORS.replace("moisture = \"soil_moisture\"", "moisture = \"wetness\"")
+        bad = SENSORS.replace('moisture = "soil_moisture"', 'moisture = "wetness"')
         with self.assertRaisesRegex(ConfigError, "Known roles"):
             load_config(self.write(**{"sensors.toml": bad}))
 
@@ -161,7 +161,9 @@ class TestCrossReferences(_ConfigCase):
             load_config(self.write(**{"sensors.toml": bad}))
 
     def test_device_in_unknown_zone(self) -> None:
-        bad = DEVICES.replace('zone = "windowsill"\ndriver', 'zone = "greenhouse"\ndriver')
+        bad = DEVICES.replace(
+            'zone = "windowsill"\ndriver', 'zone = "greenhouse"\ndriver'
+        )
         with self.assertRaisesRegex(ConfigError, "unknown zone 'greenhouse'"):
             load_config(self.write(**{"devices.toml": bad}))
 
@@ -196,10 +198,14 @@ fixture_ppfd = 120.0
         both = DEVICES.replace('driver = "gpio_relay"', 'driver = "simulated"') + (
             self.LIGHT_ON_23.replace('driver = "gpio_relay"', 'driver = "simulated"')
         )
-        self.assertEqual(len(load_config(self.write(**{"devices.toml": both})).devices), 2)
+        self.assertEqual(
+            len(load_config(self.write(**{"devices.toml": both})).devices), 2
+        )
 
     def test_two_sensors_cannot_share_a_bus_address(self) -> None:
-        clash = SENSORS + """
+        clash = (
+            SENSORS
+            + """
 [[sensor]]
 slug = "soil-2"
 node = "pi-local"
@@ -207,12 +213,15 @@ driver = "seesaw_soil"
 address = 0x36
 zone = "windowsill"
 """
+        )
         with self.assertRaisesRegex(ConfigError, "share address 0x36"):
             load_config(self.write(**{"sensors.toml": clash}))
 
     def test_same_address_on_different_mux_channels_is_fine(self) -> None:
         """This is exactly what a multiplexer is for."""
-        muxed = SENSORS + """
+        muxed = (
+            SENSORS
+            + """
 [[sensor]]
 slug = "soil-2"
 node = "pi-local"
@@ -222,10 +231,15 @@ mux_address = 0x70
 mux_channel = 1
 zone = "windowsill"
 """
-        self.assertEqual(len(load_config(self.write(**{"sensors.toml": muxed})).sensors), 2)
+        )
+        self.assertEqual(
+            len(load_config(self.write(**{"sensors.toml": muxed})).sensors), 2
+        )
 
     def test_half_specified_mux_is_rejected(self) -> None:
-        bad = SENSORS + """
+        bad = (
+            SENSORS
+            + """
 [[sensor]]
 slug = "soil-2"
 node = "pi-local"
@@ -234,6 +248,7 @@ address = 0x37
 mux_channel = 1
 zone = "windowsill"
 """
+        )
         with self.assertRaisesRegex(ConfigError, "both mux_address and mux_channel"):
             load_config(self.write(**{"sensors.toml": bad}))
 
@@ -246,13 +261,16 @@ class TestSafetyInvariants(_ConfigCase):
 
     def test_light_requires_fixture_ppfd(self) -> None:
         """Without it there is no way to convert a DLI shortfall into runtime."""
-        bad = DEVICES + """
+        bad = (
+            DEVICES
+            + """
 [[device]]
 slug = "light-1"
 kind = "light"
 zone = "windowsill"
 pin = 24
 """
+        )
         with self.assertRaisesRegex(ConfigError, "fixture_ppfd"):
             load_config(self.write(**{"devices.toml": bad}))
 

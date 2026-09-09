@@ -12,10 +12,10 @@ __all__ = [
     "TemperatureUnit",
     "celsius_to_fahrenheit",
     "fahrenheit_to_celsius",
-    "kpa_to_hpa",
-    "hpa_to_kpa",
-    "format_temperature",
     "format_duration",
+    "format_temperature",
+    "hpa_to_kpa",
+    "kpa_to_hpa",
 ]
 
 
@@ -65,7 +65,7 @@ def format_duration(seconds: float) -> str:
     if seconds < 60:
         return f"{seconds:.1f}s".replace(".0s", "s")
 
-    minutes, secs = divmod(int(round(seconds)), 60)
+    minutes, secs = divmod(round(seconds), 60)
     hours, minutes = divmod(minutes, 60)
     days, hours = divmod(hours, 24)
 

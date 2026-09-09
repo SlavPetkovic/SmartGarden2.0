@@ -12,13 +12,13 @@ from smartgarden.config.schema import (
 )
 
 __all__ = [
-    "load_config",
     "DEFAULT_CONFIG_DIR",
-    "Config",
     "AppConfig",
+    "Config",
+    "DeviceConfig",
     "NodeConfig",
+    "PlantConfig",
     "SensorConfig",
     "ZoneConfig",
-    "DeviceConfig",
-    "PlantConfig",
+    "load_config",
 ]
