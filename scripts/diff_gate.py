@@ -91,10 +91,16 @@ class Tripwire:
 
 def run(*args: str) -> str:
     result = subprocess.run(
-        args, capture_output=True, text=True, check=False, encoding="utf-8", errors="replace"
+        args,
+        capture_output=True,
+        text=True,
+        check=False,
+        encoding="utf-8",
+        errors="replace",
     )
     if result.returncode != 0 and not result.stdout:
-        print(f"warning: {' '.join(args)} failed: {result.stderr.strip()}", file=sys.stderr)
+        cmd = " ".join(args)
+        print(f"warning: {cmd} failed: {result.stderr.strip()}", file=sys.stderr)
     return result.stdout
 
 
@@ -169,7 +175,11 @@ def main() -> int:
     safety_lines = touched_safety_lines(args.base)
     if safety_lines and not has_token(body, "SAFETY-CHANGE"):
         tripwires.append(
-            Tripwire("SAFETY-CHANGE", "this change touches a safety constant", safety_lines)
+            Tripwire(
+                "SAFETY-CHANGE",
+                "this change touches a safety constant",
+                safety_lines,
+            )
         )
 
     touched_contract = sorted(files & CONTRACT_FILES)
@@ -178,8 +188,8 @@ def main() -> int:
             Tripwire(
                 "CONTRACT-CHANGE",
                 "this change edits a document the build is judged against",
-                touched_contract
-                + [
+                [
+                    *touched_contract,
                     "A requirement can be wrong. Say which one, and what proved it,",
                     "and put it in its own pull request -- not alongside the code",
                     "whose gate it moves.",
@@ -189,19 +199,20 @@ def main() -> int:
 
     touched_gate = sorted(f for f in files if GATE_FILES.match(f))
     work_files = sorted(
-        f
-        for f in files
-        if f.startswith(("src/", "tests/", "migrations/", "web/"))
+        f for f in files if f.startswith(("src/", "tests/", "migrations/", "web/"))
     )
     if touched_gate and work_files:
         tripwires.append(
             Tripwire(
                 "SEPARATE-PULL-REQUEST",
                 "this change edits the gate and the work the gate checks, together",
-                touched_gate
-                + ["alongside:"]
-                + work_files[:6]
-                + ["Split them. This one has no token -- see docs/git-workflow.md section 3."],
+                [
+                    *touched_gate,
+                    "alongside:",
+                    *work_files[:6],
+                    "Split them. This one has no token -- "
+                    "see docs/git-workflow.md section 3.",
+                ],
             )
         )
 
