@@ -32,7 +32,7 @@ from smartgarden.storage.rollup import Tier, run_rollup
 try:
     from fastapi.testclient import TestClient
 
-    from smartgarden.web import create_app
+    from smartgarden.web.app import create_app
 
     _HAS_WEB = True
 except ImportError:

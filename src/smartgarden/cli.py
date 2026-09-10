@@ -239,7 +239,7 @@ def _cmd_web(config_dir: Path, *, host: str | None, port: int | None) -> int:
     try:
         import uvicorn
 
-        from smartgarden.web import create_app
+        from smartgarden.web.app import create_app
     except ImportError as exc:
         raise SmartGardenError(
             "the web extra is not installed. On the Pi: pip install -e '.[web]'"

@@ -1,10 +1,13 @@
 """Layer 5: the JSON API (API-1...4, ARCH-1...3, ARCH-6, OPS-1...3).
 
-Importing this package imports FastAPI, pydantic and uvicorn -- the `[web]`
-extra, never the control service's base dependency set (CLAUDE.md hard rule
-7). `smartgarden.cli`'s `web` subcommand imports this module lazily, inside
-the command function, so that running `smartgarden config check` or
-`smartgarden run` never requires these to be installed at all.
+Deliberately empty of imports. Importing most of this package's modules
+(`app`, `routes`, `auth`, `deps`, `schemas`) pulls in FastAPI, pydantic and
+uvicorn -- the `[web]` extra, never the control service's base dependency
+set (CLAUDE.md hard rule 7) -- but `web/timeseries.py` is plain stdlib on
+purpose (its own docstring explains why), and re-exporting `create_app`
+here would force every import of `smartgarden.web.timeseries` to drag
+FastAPI in too, since Python always runs a package's `__init__.py` before
+any of its submodules. Import `smartgarden.web.app.create_app` directly.
 
 This package must never import `smartgarden.drivers` or
 `smartgarden.runtime`: the web process cannot touch GPIO or I2C (ARCH-2,
@@ -13,7 +16,3 @@ neither one imports the other.
 """
 
 from __future__ import annotations
-
-from smartgarden.web.app import create_app
-
-__all__ = ["create_app"]
