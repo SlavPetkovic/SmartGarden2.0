@@ -26,14 +26,16 @@ from smartgarden.core.models import (
     Decision,
     DecisionKind,
     DeviceSpec,
+    DeviceState,
     Plant,
+    PlantProfile,
     Quality,
     Reading,
     Zone,
 )
 from smartgarden.storage.timeutil import from_iso, to_iso
 
-__all__ = ["ChannelInfo", "Repository", "RollupPoint"]
+__all__ = ["ChannelInfo", "NodeInfo", "Repository", "RollupPoint", "SensorInfo"]
 
 _SlugTable = Literal["node", "zone", "plant", "device", "sensor"]
 
@@ -65,6 +67,82 @@ class RollupPoint:
     max_value: float
     mean_value: float
     sample_count: int
+
+
+@dataclass(frozen=True, slots=True)
+class NodeInfo:
+    """A node's own metadata, for the API's health view (DATA-4)."""
+
+    slug: str
+    kind: str
+    description: str
+    stale_after_seconds: float
+    last_seen_at: datetime | None
+
+
+@dataclass(frozen=True, slots=True)
+class SensorInfo:
+    """A sensor's wiring, for the health view -- the one place a driver,
+    address or mux channel is named (SCOPE-3's own exception for it)."""
+
+    slug: str
+    node: str
+    driver: str
+    address: int | None
+    mux_address: int | None
+    mux_channel: int | None
+    interval_seconds: float
+    enabled: bool
+
+
+def _plant_from_row(row: sqlite3.Row) -> Plant:
+    return Plant(
+        slug=row["slug"],
+        name=row["name"],
+        zone=row["zone_slug"],
+        species=row["species"],
+        location=row["location"],
+        profile=PlantProfile(
+            moisture_low=row["moisture_low"],
+            moisture_high=row["moisture_high"],
+            dli_target_moles=row["dli_target_moles"],
+            photoperiod_start_hour=row["photoperiod_start_hour"],
+            photoperiod_end_hour=row["photoperiod_end_hour"],
+            notes=row["notes"],
+        ),
+    )
+
+
+def _zone_from_row(row: sqlite3.Row) -> Zone:
+    return Zone(
+        slug=row["slug"],
+        name=row["name"],
+        timezone=row["timezone"],
+        watering_start_hour=row["watering_start_hour"],
+        watering_end_hour=row["watering_end_hour"],
+        daily_budget_seconds=row["daily_budget_seconds"],
+        max_pulses_per_hour=row["max_pulses_per_hour"],
+        cooldown_seconds=row["cooldown_seconds"],
+        settle_seconds=row["settle_seconds"],
+        enabled=bool(row["enabled"]),
+    )
+
+
+_PLANT_COLUMNS = """
+    plant.slug AS slug, plant.name AS name, zone.slug AS zone_slug,
+    plant.species AS species, plant.location AS location,
+    plant.moisture_low AS moisture_low, plant.moisture_high AS moisture_high,
+    plant.dli_target_moles AS dli_target_moles,
+    plant.photoperiod_start_hour AS photoperiod_start_hour,
+    plant.photoperiod_end_hour AS photoperiod_end_hour,
+    plant.notes AS notes
+"""
+
+_ZONE_COLUMNS = """
+    slug, name, timezone, watering_start_hour, watering_end_hour,
+    daily_budget_seconds, max_pulses_per_hour, cooldown_seconds,
+    settle_seconds, enabled
+"""
 
 
 class Repository:
@@ -136,6 +214,18 @@ class Repository:
         )
         return self._id("zone", zone.slug)
 
+    def get_zone(self, slug: str) -> Zone | None:
+        row = self._conn.execute(
+            f"SELECT {_ZONE_COLUMNS} FROM zone WHERE slug = ?", (slug,)
+        ).fetchone()
+        return _zone_from_row(row) if row is not None else None
+
+    def all_zones(self) -> list[Zone]:
+        rows = self._conn.execute(
+            f"SELECT {_ZONE_COLUMNS} FROM zone ORDER BY slug"
+        ).fetchall()
+        return [_zone_from_row(row) for row in rows]
+
     def upsert_plant(self, plant: Plant) -> int:
         zone_id = self._id("zone", plant.zone)
         profile = plant.profile
@@ -173,6 +263,27 @@ class Repository:
             ),
         )
         return self._id("plant", plant.slug)
+
+    def get_plant(self, slug: str) -> Plant | None:
+        row = self._conn.execute(
+            f"""
+            SELECT {_PLANT_COLUMNS}
+            FROM plant JOIN zone ON zone.id = plant.zone_id
+            WHERE plant.slug = ?
+            """,
+            (slug,),
+        ).fetchone()
+        return _plant_from_row(row) if row is not None else None
+
+    def all_plants(self) -> list[Plant]:
+        rows = self._conn.execute(
+            f"""
+            SELECT {_PLANT_COLUMNS}
+            FROM plant JOIN zone ON zone.id = plant.zone_id
+            ORDER BY plant.slug
+            """
+        ).fetchall()
+        return [_plant_from_row(row) for row in rows]
 
     def upsert_device(self, device: DeviceSpec) -> int:
         zone_id = self._id("zone", device.zone)
@@ -241,6 +352,52 @@ class Repository:
             ),
         )
         return self._id("sensor", slug)
+
+    def all_nodes(self) -> list[NodeInfo]:
+        """Every node, for the API's health view (DATA-4)."""
+        rows = self._conn.execute(
+            "SELECT slug, kind, description, stale_after_seconds, last_seen_at "
+            "FROM node ORDER BY slug"
+        ).fetchall()
+        return [
+            NodeInfo(
+                slug=row["slug"],
+                kind=row["kind"],
+                description=row["description"],
+                stale_after_seconds=row["stale_after_seconds"],
+                last_seen_at=from_iso(row["last_seen_at"])
+                if row["last_seen_at"] is not None
+                else None,
+            )
+            for row in rows
+        ]
+
+    def all_sensors(self) -> list[SensorInfo]:
+        """Every sensor's wiring, for the health view (SENS-8)."""
+        rows = self._conn.execute(
+            """
+            SELECT
+                sensor.slug AS slug, node.slug AS node, sensor.driver AS driver,
+                sensor.address AS address, sensor.mux_address AS mux_address,
+                sensor.mux_channel AS mux_channel,
+                sensor.interval_seconds AS interval_seconds, sensor.enabled AS enabled
+            FROM sensor JOIN node ON node.id = sensor.node_id
+            ORDER BY sensor.slug
+            """
+        ).fetchall()
+        return [
+            SensorInfo(
+                slug=row["slug"],
+                node=row["node"],
+                driver=row["driver"],
+                address=row["address"],
+                mux_address=row["mux_address"],
+                mux_channel=row["mux_channel"],
+                interval_seconds=row["interval_seconds"],
+                enabled=bool(row["enabled"]),
+            )
+            for row in rows
+        ]
 
     def reconcile_channels(
         self,
@@ -557,6 +714,51 @@ class Repository:
         )
         assert cur.lastrowid is not None
         return cur.lastrowid
+
+    def actuations_between(
+        self, zone_slug: str, start: datetime, end: datetime
+    ) -> list[Actuation]:
+        """Actuations for a zone in a window (UI-6: marking irrigation events
+        on a chart). Empty in stage A, since nothing can act yet -- the read
+        path exists now so it needs no further work once layer 04b starts
+        writing rows here."""
+        zone_id = self._id("zone", zone_slug)
+        rows = self._conn.execute(
+            """
+            SELECT
+                actuation.ts AS ts, device.slug AS device, actuation.action AS action,
+                actuation.state AS state,
+                actuation.commanded_seconds AS commanded_seconds,
+                actuation.actual_seconds AS actual_seconds,
+                actuation.pre_value AS pre_value,
+                actuation.post_value AS post_value, actuation.post_at AS post_at,
+                actuation.reason AS reason, actuation.forced_off AS forced_off,
+                actuation.metadata AS metadata
+            FROM actuation
+            JOIN device ON device.id = actuation.device_id
+            WHERE actuation.zone_id = ? AND actuation.ts >= ? AND actuation.ts < ?
+            ORDER BY actuation.ts
+            """,
+            (zone_id, to_iso(start), to_iso(end)),
+        ).fetchall()
+        return [
+            Actuation(
+                at=from_iso(row["ts"]),
+                zone=zone_slug,
+                device=row["device"],
+                action=ActionKind(row["action"]),
+                state=DeviceState(row["state"]),
+                commanded_seconds=row["commanded_seconds"],
+                actual_seconds=row["actual_seconds"],
+                pre_value=row["pre_value"],
+                post_value=row["post_value"],
+                post_at=from_iso(row["post_at"]) if row["post_at"] is not None else None,
+                reason=row["reason"],
+                forced_off=bool(row["forced_off"]),
+                metadata=json.loads(row["metadata"]),
+            )
+            for row in rows
+        ]
 
     # -- lookups ---------------------------------------------------------------
 

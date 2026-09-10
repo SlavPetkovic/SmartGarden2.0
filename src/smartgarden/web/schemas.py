@@ -13,15 +13,24 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 __all__ = [
+    "ActuationOut",
     "ChannelOut",
     "CommandIn",
     "CommandOut",
+    "DecisionOut",
+    "HealthOut",
     "IngestChannel",
     "IngestReading",
     "IngestRequest",
     "IngestResponse",
+    "NodeOut",
+    "PlantOut",
+    "PlantUpdate",
     "RollupPointOut",
+    "SensorOut",
     "TimeSeriesOut",
+    "ZoneOut",
+    "ZoneUpdate",
 ]
 
 
@@ -117,3 +126,104 @@ class IngestRequest(BaseModel):
 
 class IngestResponse(BaseModel):
     accepted: int
+
+
+class PlantOut(BaseModel):
+    slug: str
+    name: str
+    zone: str
+    species: str
+    location: str
+    moisture_low: float | None
+    moisture_high: float | None
+    dli_target_moles: float | None
+    photoperiod_start_hour: int | None
+    photoperiod_end_hour: int | None
+    notes: str
+
+
+class PlantUpdate(BaseModel):
+    """UI-3: thresholds and targets, editable from the UI, writing to the
+    database -- never to config/plants.toml. Any field left out of the
+    request body is left unchanged; a field explicitly sent as null clears it."""
+
+    moisture_low: float | None = None
+    moisture_high: float | None = None
+    dli_target_moles: float | None = None
+    photoperiod_start_hour: int | None = None
+    photoperiod_end_hour: int | None = None
+    notes: str | None = None
+
+
+class ZoneOut(BaseModel):
+    slug: str
+    name: str
+    timezone: str
+    watering_start_hour: int
+    watering_end_hour: int
+    daily_budget_seconds: float
+    max_pulses_per_hour: int
+    cooldown_seconds: float
+    settle_seconds: float
+    enabled: bool
+
+
+class ZoneUpdate(BaseModel):
+    """UI-3: windows and budgets, editable from the UI. Same partial-update
+    semantics as PlantUpdate."""
+
+    watering_start_hour: int | None = None
+    watering_end_hour: int | None = None
+    daily_budget_seconds: float | None = None
+    max_pulses_per_hour: int | None = None
+    cooldown_seconds: float | None = None
+    settle_seconds: float | None = None
+    enabled: bool | None = None
+
+
+class NodeOut(BaseModel):
+    slug: str
+    kind: str
+    description: str
+    last_seen_at: datetime | None
+    online: bool
+
+
+class SensorOut(BaseModel):
+    slug: str
+    node: str
+    driver: str
+    address: int | None
+    mux_address: int | None
+    mux_channel: int | None
+    interval_seconds: float
+    enabled: bool
+
+
+class HealthOut(BaseModel):
+    nodes: list[NodeOut]
+    sensors: list[SensorOut]
+
+
+class DecisionOut(BaseModel):
+    at: datetime
+    zone: str
+    kind: str
+    action: str | None
+    duration_seconds: float | None
+    reason: str
+    inputs: dict[str, float]
+
+
+class ActuationOut(BaseModel):
+    """UI-6: irrigation events marked on a chart's time axis. Empty in stage
+    A -- nothing can act yet -- populated once layer 04b exists."""
+
+    at: datetime
+    device: str
+    action: str
+    state: str
+    commanded_seconds: float | None
+    actual_seconds: float | None
+    pre_value: float | None
+    post_value: float | None
