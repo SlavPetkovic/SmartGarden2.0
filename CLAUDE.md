@@ -108,7 +108,15 @@ tests/
 | 3 | Drivers — BME680, VEML7700, Seesaw, TCA9548A, simulated | merged; `smartgarden doctor` not yet run against real hardware |
 | 4 | Runtime — control loop, guards, watchdog, panic-off | 04a (observe-only) merged; 04b waits on the soak |
 | 5 | API — FastAPI, ingest, systemd units | merged; API bind address (127.0.0.1 vs. tailnet-reachable) still an open call |
-| 6 | Interface — PWA, charts, health, decision log | not started |
+| 6 | Interface — PWA, charts, health, decision log | merged; not yet opened in a real browser |
+
+**Stage A (layers 01–06) is complete on `main` as of tag `layer-06`.** The
+dashboard shows live readings from whatever is actually wired, the decision
+log explains what the system would have done, and nothing can act. What's
+next is stage B — the soak — which is a person's job, not a layer to build.
+See the open items above (doctor on real hardware, the API bind address,
+opening the PWA in an actual browser) before treating stage A as fully
+verified rather than just merged.
 
 **Between layers 3 and 4 there is a deliberate gate.** Once the drivers work,
 run the sensors for several days with `automation_enabled = false` and derive
