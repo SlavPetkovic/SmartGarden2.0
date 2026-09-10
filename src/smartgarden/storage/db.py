@@ -23,17 +23,30 @@ def connect(
     *,
     migrations_dir: Path = DEFAULT_MIGRATIONS_DIR,
     busy_timeout_ms: int = DEFAULT_BUSY_TIMEOUT_MS,
+    check_same_thread: bool = True,
 ) -> sqlite3.Connection:
     """Open (creating if needed) a database, migrated to the current schema.
 
     `path` may be `:memory:` for tests. WAL mode is skipped for an in-memory
     database -- SQLite does not support it there, and there is no second
     process to protect against.
+
+    `check_same_thread` defaults to sqlite3's own safe default (True): a
+    connection may only be used from the thread that created it. Set it to
+    False for a connection whose open/use/close happens within one logical
+    unit of work handed off across threads sequentially, never accessed
+    concurrently -- which is exactly what FastAPI's sync dependency
+    generators do (`web/deps.py:get_repo`): the entry and the `yield`'s
+    cleanup can each land on a different worker thread from anyio's
+    threadpool, and sqlite3's default thread-affinity check has no way to
+    know that isn't concurrent access.
     """
     if isinstance(path, Path):
         path.parent.mkdir(parents=True, exist_ok=True)
 
-    conn = sqlite3.connect(str(path), isolation_level=None)
+    conn = sqlite3.connect(
+        str(path), isolation_level=None, check_same_thread=check_same_thread
+    )
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     conn.execute(f"PRAGMA busy_timeout = {int(busy_timeout_ms)}")
