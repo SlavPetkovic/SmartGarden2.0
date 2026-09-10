@@ -107,7 +107,7 @@ tests/
 | 2 | Storage — migrations, repositories, rollups, export | **done** |
 | 3 | Drivers — BME680, VEML7700, Seesaw, TCA9548A, simulated | merged; `smartgarden doctor` not yet run against real hardware |
 | 4 | Runtime — control loop, guards, watchdog, panic-off | 04a (observe-only) merged; 04b waits on the soak |
-| 5 | API — FastAPI, ingest, systemd units | not started |
+| 5 | API — FastAPI, ingest, systemd units | merged; API bind address (127.0.0.1 vs. tailnet-reachable) still an open call |
 | 6 | Interface — PWA, charts, health, decision log | not started |
 
 **Between layers 3 and 4 there is a deliberate gate.** Once the drivers work,
