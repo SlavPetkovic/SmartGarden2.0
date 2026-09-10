@@ -16,11 +16,14 @@ from typing import Literal
 
 from smartgarden.core.errors import StorageError
 from smartgarden.core.models import (
+    ActionKind,
     Actuation,
+    ChannelRole,
     ChannelSpec,
     Command,
     CommandKind,
     Decision,
+    DecisionKind,
     DeviceSpec,
     Plant,
     Quality,
@@ -312,6 +315,32 @@ class Repository:
             for row in rows
         ]
 
+    def channels_by_role(self, zone_slug: str) -> dict[ChannelRole, int]:
+        """The one channel per role bound to a zone (DATA-3).
+
+        Answers "which channel is *the* soil_moisture reading for this
+        zone" without the caller ever naming a sensor or driver. If two
+        channels in a zone share a role, the last one found wins -- an
+        ambiguity that matters once a zone holds more than one plant,
+        not before.
+        """
+        zone_id = self._id("zone", zone_slug)
+        rows = self._conn.execute(
+            "SELECT id, role FROM channel WHERE zone_id = ? AND role IS NOT NULL",
+            (zone_id,),
+        ).fetchall()
+        return {ChannelRole(row["role"]): int(row["id"]) for row in rows}
+
+    def latest_value(self, channel_id: int) -> tuple[float, datetime] | None:
+        """The most recent raw reading for a channel, or None if it has none yet."""
+        row = self._conn.execute(
+            "SELECT value, ts FROM reading WHERE channel_id = ? ORDER BY ts DESC LIMIT 1",
+            (channel_id,),
+        ).fetchone()
+        if row is None:
+            return None
+        return (float(row["value"]), from_iso(row["ts"]))
+
     # -- decisions, commands, actuations --------------------------------------
 
     def insert_decision(self, decision: Decision) -> int:
@@ -335,6 +364,29 @@ class Repository:
         )
         assert cur.lastrowid is not None
         return cur.lastrowid
+
+    def recent_decisions(self, zone_slug: str, *, limit: int = 10) -> list[Decision]:
+        """The most recent decisions for a zone, newest first (CTRL-8)."""
+        zone_id = self._id("zone", zone_slug)
+        rows = self._conn.execute(
+            """
+            SELECT ts, kind, action, duration_seconds, reason, inputs FROM decision
+            WHERE zone_id = ? ORDER BY ts DESC, id DESC LIMIT ?
+            """,
+            (zone_id, limit),
+        ).fetchall()
+        return [
+            Decision(
+                at=from_iso(row["ts"]),
+                zone=zone_slug,
+                kind=DecisionKind(row["kind"]),
+                action=ActionKind(row["action"]) if row["action"] is not None else None,
+                duration_seconds=row["duration_seconds"],
+                reason=row["reason"],
+                inputs=json.loads(row["inputs"]),
+            )
+            for row in rows
+        ]
 
     def insert_command(self, command: Command) -> int:
         zone_id = self._id("zone", command.zone) if command.zone is not None else None

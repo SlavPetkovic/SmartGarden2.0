@@ -7,6 +7,7 @@ import io
 import os
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -63,6 +64,39 @@ class TestDoctor(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("error:", err)
         self.assertNotIn("Traceback", err)
+
+
+class TestRun(unittest.TestCase):
+    """`smartgarden run --once` against a temp config using simulated
+    drivers, so it needs no I2C hardware (layer 04a)."""
+
+    def _write_config(self, tmp: Path) -> Path:
+        config_dir = tmp / "config"
+        config_dir.mkdir()
+        (config_dir / "app.toml").write_text(
+            f'[app]\ndatabase_path = "{(tmp / "smartgarden.db").as_posix()}"\n'
+            "automation_enabled = false\n",
+            encoding="utf-8",
+        )
+        (config_dir / "sensors.toml").write_text(
+            '[[node]]\nslug = "pi-local"\n\n'
+            '[[sensor]]\nslug = "air-1"\nnode = "pi-local"\n'
+            'driver = "simulated_bme680"\nzone = "windowsill"\n\n'
+            '[[sensor]]\nslug = "soil-1"\nnode = "pi-local"\n'
+            'driver = "simulated_seesaw_soil"\nzone = "windowsill"\n',
+            encoding="utf-8",
+        )
+        (config_dir / "devices.toml").write_text(
+            '[[zone]]\nslug = "windowsill"\nname = "Windowsill"\n',
+            encoding="utf-8",
+        )
+        return config_dir
+
+    def test_runs_a_single_tick_and_exits_clean(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            config_dir = self._write_config(Path(tmp))
+            code, _, err = run(["--config-dir", str(config_dir), "run", "--once"])
+            self.assertEqual(code, 0, err)
 
 
 class TestPipeHandling(unittest.TestCase):

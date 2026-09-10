@@ -222,5 +222,53 @@ class TestDecisionsCommandsActuations(unittest.TestCase):
         self.assertEqual(row["post_value"] - row["pre_value"], 360.0)
 
 
+class TestChannelsByRoleAndLatestValue(unittest.TestCase):
+    """Used by the layer 04a loop to find "the" soil_moisture channel for a
+    zone and its most recent raw value, without naming a sensor (DATA-3)."""
+
+    def setUp(self) -> None:
+        self.conn = connect(":memory:")
+        self.addCleanup(self.conn.close)
+        self.repo = Repository(self.conn)
+        _seed(self.repo)
+        self.moisture_id = self.repo.reconcile_channels(
+            "soil-monstera",
+            [ChannelSpec(key="moisture", unit="counts", role=ChannelRole.SOIL_MOISTURE)],
+            zone="windowsill",
+        )["moisture"]
+
+    def test_channels_by_role_finds_the_bound_channel(self) -> None:
+        roles = self.repo.channels_by_role("windowsill")
+        self.assertEqual(roles[ChannelRole.SOIL_MOISTURE], self.moisture_id)
+
+    def test_channels_by_role_ignores_roleless_channels(self) -> None:
+        self.repo.reconcile_channels(
+            "soil-monstera",
+            [ChannelSpec(key="raw_capacitance", unit="counts")],
+            zone="windowsill",
+        )
+        roles = self.repo.channels_by_role("windowsill")
+        self.assertEqual(set(roles), {ChannelRole.SOIL_MOISTURE})
+
+    def test_latest_value_is_none_before_any_reading(self) -> None:
+        self.assertIsNone(self.repo.latest_value(self.moisture_id))
+
+    def test_latest_value_returns_the_most_recent_reading(self) -> None:
+        self.repo.insert_reading(
+            Reading(channel_id=self.moisture_id, at=NOW, value=500.0)
+        )
+        self.repo.insert_reading(
+            Reading(
+                channel_id=self.moisture_id, at=NOW + timedelta(minutes=1), value=520.0
+            )
+        )
+        latest = self.repo.latest_value(self.moisture_id)
+        self.assertIsNotNone(latest)
+        assert latest is not None  # narrows for mypy
+        value, at = latest
+        self.assertEqual(value, 520.0)
+        self.assertEqual(at, NOW + timedelta(minutes=1))
+
+
 if __name__ == "__main__":
     unittest.main()
