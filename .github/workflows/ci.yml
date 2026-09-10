@@ -45,8 +45,12 @@ jobs:
         with:
           python-version: "3.13"
           cache: pip
-      - name: Install dev extras
-        run: pip install -e ".[dev]"
+      # The web extra (FastAPI, uvicorn, pydantic) is separate from the
+      # control service's zero-dependency base (see tests-bare above), but
+      # web/ is still part of this repo's mypy target and needs the real
+      # library installed to type-check against.
+      - name: Install dev and web extras
+        run: pip install -e ".[dev,web]"
       - name: ruff
         run: ruff check .
       - name: ruff format check
@@ -75,7 +79,11 @@ jobs:
         with:
           python-version: "3.13"
           cache: pip
-      - name: Install dev extras
-        run: pip install -e ".[dev]"
+      # Same reasoning as lint-and-types: web/ needs FastAPI installed to be
+      # exercised at all. Tests for it self-skip (unittest-style, not a
+      # pytest marker) when the extra is absent, so tests-bare stays green
+      # without it -- see tests/test_web_app.py for the pattern.
+      - name: Install dev and web extras
+        run: pip install -e ".[dev,web]"
       - name: pytest
         run: pytest -m "not hardware" --cov --cov-report=term-missing
