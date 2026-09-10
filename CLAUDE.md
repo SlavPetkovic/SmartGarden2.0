@@ -104,7 +104,7 @@ tests/
 | Layer | Contents | State |
 |---|---|---|
 | 1 | Foundation — config, core models, physics | **done** |
-| 2 | Storage — migrations, repositories, rollups, export | not started |
+| 2 | Storage — migrations, repositories, rollups, export | **done** |
 | 3 | Drivers — BME680, VEML7700, Seesaw, TCA9548A, simulated | not started |
 | 4 | Runtime — control loop, guards, watchdog, panic-off | not started |
 | 5 | API — FastAPI, ingest, systemd units | not started |
