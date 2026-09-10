@@ -1,7 +1,8 @@
 """Command-line entry point.
 
 Layer 1 provided `config check` and `physics`. Layer 3 added `doctor`.
-Layer 4a adds `run`. Later layers add `web`, `export` and `backup`.
+Layer 4a added `run`. Layer 5 adds `web`. Later layers add `export` and
+`backup`.
 """
 
 from __future__ import annotations
@@ -73,6 +74,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--once",
         action="store_true",
         help="run a single tick and exit, instead of looping",
+    )
+
+    web_cmd = sub.add_parser("web", help="run the JSON API (FastAPI + uvicorn)")
+    web_cmd.add_argument("--host", default=None, help="override app.toml's web_host")
+    web_cmd.add_argument(
+        "--port", type=int, default=None, help="override app.toml's web_port"
     )
 
     return parser
@@ -219,6 +226,47 @@ def _cmd_run(config_dir: Path, *, once: bool) -> int:
         conn.close()
 
 
+def _cmd_web(config_dir: Path, *, host: str | None, port: int | None) -> int:
+    config = load_config(config_dir)
+    logging.basicConfig(
+        level=config.app.log_level,
+        format="%(asctime)s %(levelname)-8s %(name)s: %(message)s",
+    )
+    logger = logging.getLogger("smartgarden.web")
+
+    # Lazy: the base CLI (config check, run, doctor) must work with no [web]
+    # extra installed at all (CLAUDE.md hard rule 7). Only this command needs it.
+    try:
+        import uvicorn
+
+        from smartgarden.web.app import create_app
+    except ImportError as exc:
+        raise SmartGardenError(
+            "the web extra is not installed. On the Pi: pip install -e '.[web]'"
+        ) from exc
+
+    db_path = Path(config.app.database_path)
+    if not db_path.is_absolute():
+        db_path = config_dir.parent / db_path
+
+    app = create_app(config, db_path)
+    resolved_host = host or config.app.web_host
+    resolved_port = port or config.app.web_port
+    logger.info(
+        "web API starting on %s:%d (auth %s)",
+        resolved_host,
+        resolved_port,
+        "enabled" if config.app.api_token else "disabled",
+    )
+    uvicorn.run(
+        app,
+        host=resolved_host,
+        port=resolved_port,
+        log_level=config.app.log_level.lower(),
+    )
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
@@ -230,6 +278,8 @@ def main(argv: list[str] | None = None) -> int:
             return _cmd_doctor(args.config_dir)
         if args.command == "run":
             return _cmd_run(args.config_dir, once=args.once)
+        if args.command == "web":
+            return _cmd_web(args.config_dir, host=args.host, port=args.port)
     except BrokenPipeError:
         # Output was piped into something that closed early -- `| head`, or a
         # pager the user quit. That is normal usage, not a failure. Point the

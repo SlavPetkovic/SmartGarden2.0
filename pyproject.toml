@@ -47,6 +47,9 @@ dev = [
   "pytest-cov>=6.0",
   "ruff>=0.8",
   "mypy>=1.13",
+  # fastapi.testclient.TestClient needs httpx at runtime; it is test-only,
+  # never imported by the web app itself, so it lives here rather than [web].
+  "httpx>=0.27",
 ]
 
 [project.scripts]

@@ -207,12 +207,24 @@ class AppConfig:
     raw_retention_days: int = 7
     minute_retention_days: int = 90
     automation_enabled: bool = False
+    web_host: str = "127.0.0.1"
+    web_port: int = 8000
+    # None disables token auth entirely (API-4's "disabled by default"). A
+    # non-empty string enables it -- there is no separate on/off flag,
+    # because a token that is set but "disabled" is exactly the kind of
+    # foot-gun OPS-3 exists to avoid.
+    api_token: str | None = None
 
     def __post_init__(self) -> None:
         if self.minute_retention_days < self.raw_retention_days:
             raise ConfigError(
                 "app.toml: minute_retention_days must be at least raw_retention_days, "
                 "otherwise history disappears when raw data is pruned"
+            )
+        if self.api_token is not None and not self.api_token.strip():
+            raise ConfigError(
+                "app.toml: api_token is set but blank -- omit it to disable auth, "
+                "or give it a real value"
             )
 
     @classmethod
@@ -227,6 +239,9 @@ class AppConfig:
             raw_retention_days=t.int_("raw_retention_days", 7, lo=1),
             minute_retention_days=t.int_("minute_retention_days", 90, lo=1),
             automation_enabled=t.bool_("automation_enabled", False),
+            web_host=t.str_("web_host", "127.0.0.1"),
+            web_port=t.int_("web_port", 8000, lo=1, hi=65535),
+            api_token=t.opt_str("api_token"),
         )
         t.done()
         return config

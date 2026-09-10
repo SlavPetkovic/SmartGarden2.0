@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import sqlite3
 from collections.abc import Iterable, Sequence
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal
 
@@ -32,9 +33,38 @@ from smartgarden.core.models import (
 )
 from smartgarden.storage.timeutil import from_iso, to_iso
 
-__all__ = ["Repository"]
+__all__ = ["ChannelInfo", "Repository", "RollupPoint"]
 
 _SlugTable = Literal["node", "zone", "plant", "device", "sensor"]
+
+
+@dataclass(frozen=True, slots=True)
+class ChannelInfo:
+    """Channel metadata for the API's channel-listing endpoint (API-2).
+
+    A new sensor appears here the moment its channels are reconciled --
+    nothing about this shape needs to change for a new driver to show up.
+    """
+
+    id: int
+    sensor: str
+    key: str
+    unit: str
+    role: ChannelRole | None
+    precision: int
+    plausible_min: float | None
+    plausible_max: float | None
+    zone: str | None
+    plant: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class RollupPoint:
+    bucket_start: datetime
+    min_value: float
+    max_value: float
+    mean_value: float
+    sample_count: int
 
 
 class Repository:
@@ -269,6 +299,40 @@ class Repository:
             result[spec.key] = int(row["id"])
         return result
 
+    def all_channels(self) -> list[ChannelInfo]:
+        """Every channel, for the API's metadata endpoint (API-2)."""
+        rows = self._conn.execute(
+            """
+            SELECT
+                channel.id AS id, sensor.slug AS sensor, channel.key AS key,
+                channel.unit AS unit, channel.role AS role,
+                channel.precision AS precision,
+                channel.plausible_min AS plausible_min,
+                channel.plausible_max AS plausible_max,
+                zone.slug AS zone, plant.slug AS plant
+            FROM channel
+            JOIN sensor ON sensor.id = channel.sensor_id
+            LEFT JOIN zone ON zone.id = channel.zone_id
+            LEFT JOIN plant ON plant.id = channel.plant_id
+            ORDER BY sensor.slug, channel.key
+            """
+        ).fetchall()
+        return [
+            ChannelInfo(
+                id=int(row["id"]),
+                sensor=row["sensor"],
+                key=row["key"],
+                unit=row["unit"],
+                role=ChannelRole(row["role"]) if row["role"] is not None else None,
+                precision=int(row["precision"]),
+                plausible_min=row["plausible_min"],
+                plausible_max=row["plausible_max"],
+                zone=row["zone"],
+                plant=row["plant"],
+            )
+            for row in rows
+        ]
+
     # -- readings ------------------------------------------------------------
 
     def insert_reading(self, reading: Reading) -> int:
@@ -311,6 +375,31 @@ class Repository:
                 at=from_iso(row["ts"]),
                 value=float(row["value"]),
                 quality=Quality(row["quality"]),
+            )
+            for row in rows
+        ]
+
+    def rollup_between(
+        self, channel_id: int, tier: str, start: datetime, end: datetime
+    ) -> list[RollupPoint]:
+        """Rollup buckets for a channel and tier, for the API's time-series
+        endpoint once it has picked a tier coarser than raw (API-3)."""
+        rows = self._conn.execute(
+            """
+            SELECT bucket_start, min_value, max_value, mean_value, sample_count
+            FROM reading_rollup
+            WHERE channel_id = ? AND tier = ? AND bucket_start >= ? AND bucket_start < ?
+            ORDER BY bucket_start
+            """,
+            (channel_id, tier, to_iso(start), to_iso(end)),
+        ).fetchall()
+        return [
+            RollupPoint(
+                bucket_start=from_iso(row["bucket_start"]),
+                min_value=float(row["min_value"]),
+                max_value=float(row["max_value"]),
+                mean_value=float(row["mean_value"]),
+                sample_count=int(row["sample_count"]),
             )
             for row in rows
         ]
