@@ -85,8 +85,20 @@ strict = true
 warn_unreachable = true
 
 [[tool.mypy.overrides]]
-# Hardware libraries ship no type information.
-module = ["board.*", "busio.*", "adafruit_*.*", "gpiozero.*", "lgpio.*"]
+# Hardware libraries ship no type information. mypy's module-pattern matcher
+# rejects a partial-component wildcard like "adafruit_*.*" (each dotted
+# component must be an exact name or a bare "*"), so every adafruit package
+# actually imported anywhere in drivers/ is listed by name instead.
+module = [
+  "board.*",
+  "busio.*",
+  "gpiozero.*",
+  "lgpio.*",
+  "adafruit_bme680.*",
+  "adafruit_veml7700.*",
+  "adafruit_seesaw.*",
+  "adafruit_tca9548a.*",
+]
 ignore_missing_imports = true
 
 [tool.coverage.run]
