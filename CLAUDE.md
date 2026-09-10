@@ -106,7 +106,7 @@ tests/
 | 1 | Foundation — config, core models, physics | **done** |
 | 2 | Storage — migrations, repositories, rollups, export | **done** |
 | 3 | Drivers — BME680, VEML7700, Seesaw, TCA9548A, simulated | merged; `smartgarden doctor` not yet run against real hardware |
-| 4 | Runtime — control loop, guards, watchdog, panic-off | not started |
+| 4 | Runtime — control loop, guards, watchdog, panic-off | 04a (observe-only) merged; 04b waits on the soak |
 | 5 | API — FastAPI, ingest, systemd units | not started |
 | 6 | Interface — PWA, charts, health, decision log | not started |
 
