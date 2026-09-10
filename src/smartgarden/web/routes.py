@@ -11,6 +11,7 @@ the control loop is the only thing that ever drains it.
 from __future__ import annotations
 
 import logging
+from dataclasses import replace
 from datetime import UTC, datetime
 from typing import Annotated
 
@@ -22,21 +23,33 @@ from smartgarden.core.models import (
     ChannelSpec,
     Command,
     CommandKind,
+    NodeHealth,
+    Plant,
     Quality,
     Reading,
+    Zone,
 )
 from smartgarden.storage.repository import Repository
 from smartgarden.web.auth import require_token
 from smartgarden.web.deps import get_repo
 from smartgarden.web.schemas import (
+    ActuationOut,
     ChannelOut,
     CommandIn,
     CommandOut,
+    DecisionOut,
+    HealthOut,
     IngestRequest,
     IngestResponse,
+    NodeOut,
+    PlantOut,
+    PlantUpdate,
     ReadingPointOut,
     RollupPointOut,
+    SensorOut,
     TimeSeriesOut,
+    ZoneOut,
+    ZoneUpdate,
 )
 from smartgarden.web.timeseries import pick_tier
 
@@ -223,4 +236,171 @@ def list_pending_commands(repo: RepoDep) -> list[CommandOut]:
             pending=c.pending,
         )
         for c in repo.pending_commands()
+    ]
+
+
+def _plant_out(plant: Plant) -> PlantOut:
+    return PlantOut(
+        slug=plant.slug,
+        name=plant.name,
+        zone=plant.zone,
+        species=plant.species,
+        location=plant.location,
+        moisture_low=plant.profile.moisture_low,
+        moisture_high=plant.profile.moisture_high,
+        dli_target_moles=plant.profile.dli_target_moles,
+        photoperiod_start_hour=plant.profile.photoperiod_start_hour,
+        photoperiod_end_hour=plant.profile.photoperiod_end_hour,
+        notes=plant.profile.notes,
+    )
+
+
+def _zone_out(zone: Zone) -> ZoneOut:
+    return ZoneOut(
+        slug=zone.slug,
+        name=zone.name,
+        timezone=zone.timezone,
+        watering_start_hour=zone.watering_start_hour,
+        watering_end_hour=zone.watering_end_hour,
+        daily_budget_seconds=zone.daily_budget_seconds,
+        max_pulses_per_hour=zone.max_pulses_per_hour,
+        cooldown_seconds=zone.cooldown_seconds,
+        settle_seconds=zone.settle_seconds,
+        enabled=zone.enabled,
+    )
+
+
+@router.get("/plants", response_model=list[PlantOut])
+def list_plants(repo: RepoDep) -> list[PlantOut]:
+    return [_plant_out(p) for p in repo.all_plants()]
+
+
+@router.patch("/plants/{slug}", response_model=PlantOut)
+def update_plant(slug: str, payload: PlantUpdate, repo: RepoDep) -> PlantOut:
+    """UI-3: thresholds and targets, editable from the UI -- writes to the
+    database via the same Repository.upsert_plant the loop's own wiring
+    uses, never to config/plants.toml."""
+    plant = repo.get_plant(slug)
+    if plant is None:
+        raise HTTPException(404, f"no plant '{slug}'")
+
+    updates = payload.model_dump(exclude_unset=True)
+    try:
+        updated = (
+            replace(plant, profile=replace(plant.profile, **updates))
+            if updates
+            else plant
+        )
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+    repo.upsert_plant(updated)
+    return _plant_out(updated)
+
+
+@router.get("/zones", response_model=list[ZoneOut])
+def list_zones(repo: RepoDep) -> list[ZoneOut]:
+    return [_zone_out(z) for z in repo.all_zones()]
+
+
+@router.patch("/zones/{slug}", response_model=ZoneOut)
+def update_zone(slug: str, payload: ZoneUpdate, repo: RepoDep) -> ZoneOut:
+    """UI-3: windows and budgets, editable from the UI. Same database-only
+    write path as update_plant above."""
+    zone = repo.get_zone(slug)
+    if zone is None:
+        raise HTTPException(404, f"no zone '{slug}'")
+
+    updates = payload.model_dump(exclude_unset=True)
+    try:
+        updated = replace(zone, **updates) if updates else zone
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+    repo.upsert_zone(updated)
+    return _zone_out(updated)
+
+
+@router.get("/health", response_model=HealthOut)
+def health(repo: RepoDep) -> HealthOut:
+    """Nodes and sensors -- the one view that names a driver, an address or
+    a mux channel (SCOPE-3's own carve-out for it)."""
+    now = datetime.now(UTC)
+    nodes = [
+        NodeOut(
+            slug=n.slug,
+            kind=n.kind,
+            description=n.description,
+            last_seen_at=n.last_seen_at,
+            online=not NodeHealth(
+                node=n.slug,
+                last_seen_at=n.last_seen_at,
+                stale_after_seconds=n.stale_after_seconds,
+            ).is_stale(now),
+        )
+        for n in repo.all_nodes()
+    ]
+    sensors = [
+        SensorOut(
+            slug=s.slug,
+            node=s.node,
+            driver=s.driver,
+            address=s.address,
+            mux_address=s.mux_address,
+            mux_channel=s.mux_channel,
+            interval_seconds=s.interval_seconds,
+            enabled=s.enabled,
+        )
+        for s in repo.all_sensors()
+    ]
+    return HealthOut(nodes=nodes, sensors=sensors)
+
+
+@router.get("/zones/{slug}/decisions", response_model=list[DecisionOut])
+def list_decisions(slug: str, repo: RepoDep, limit: int = 20) -> list[DecisionOut]:
+    """The decision log (CTRL-8): the same reason text a person reads is
+    what an alert would carry, and it names no driver -- only a zone."""
+    try:
+        decisions = repo.recent_decisions(slug, limit=limit)
+    except StorageError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    return [
+        DecisionOut(
+            at=d.at,
+            zone=d.zone,
+            kind=d.kind.value,
+            action=d.action.value if d.action is not None else None,
+            duration_seconds=d.duration_seconds,
+            reason=d.reason,
+            inputs=d.inputs,
+        )
+        for d in decisions
+    ]
+
+
+@router.get("/zones/{slug}/actuations", response_model=list[ActuationOut])
+def list_actuations(
+    slug: str, start: datetime, end: datetime, repo: RepoDep
+) -> list[ActuationOut]:
+    """Irrigation events for a chart's time axis (UI-6). Empty until layer
+    04b exists -- stage A has no actuation path, so no row here is ever a
+    surprise."""
+    if start.tzinfo is None or end.tzinfo is None:
+        raise HTTPException(422, "start and end must be timezone-aware")
+    try:
+        actuations = repo.actuations_between(slug, start, end)
+    except StorageError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    return [
+        ActuationOut(
+            at=a.at,
+            device=a.device,
+            action=a.action.value,
+            state=a.state.value,
+            commanded_seconds=a.commanded_seconds,
+            actual_seconds=a.actual_seconds,
+            pre_value=a.pre_value,
+            post_value=a.post_value,
+        )
+        for a in actuations
     ]

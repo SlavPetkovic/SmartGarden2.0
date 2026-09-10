@@ -1,0 +1,14 @@
+{
+  "name": "SmartGarden",
+  "short_name": "SmartGarden",
+  "description": "Sensor-driven irrigation and lighting dashboard.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#04100B",
+  "theme_color": "#07160F",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
