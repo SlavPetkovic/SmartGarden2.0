@@ -48,6 +48,23 @@ class TestPhysics(unittest.TestCase):
         self.assertIn("0-100", err)
 
 
+class TestDoctor(unittest.TestCase):
+    def test_fails_cleanly_without_i2c_hardware_libraries(self) -> None:
+        """On a laptop with no `[pi]` extra installed, `doctor` must report a
+        clear error rather than an ImportError traceback (SENS-8)."""
+        try:
+            import board  # noqa: F401
+        except ImportError:
+            pass
+        else:
+            self.skipTest("hardware: the [pi] extra is installed in this environment")
+
+        code, _, err = run(["--config-dir", REPO_CONFIG, "doctor"])
+        self.assertEqual(code, 1)
+        self.assertIn("error:", err)
+        self.assertNotIn("Traceback", err)
+
+
 class TestPipeHandling(unittest.TestCase):
     def test_closed_pipe_is_not_an_error(self) -> None:
         """`smartgarden config check | head` must not traceback.

@@ -1,7 +1,7 @@
 """Command-line entry point.
 
-Layer 1 provides `config check` and `physics`. Later layers add `run`, `web`,
-`doctor`, `export` and `backup` as subcommands here.
+Layer 1 provided `config check` and `physics`. Layer 3 adds `doctor`. Later
+layers add `run`, `web`, `export` and `backup` as subcommands here.
 """
 
 from __future__ import annotations
@@ -19,6 +19,7 @@ from smartgarden.core.physics import (
     lux_to_ppfd,
     vapour_pressure_deficit,
 )
+from smartgarden.drivers.doctor import ConfiguredSensor, run_doctor
 
 __all__ = ["build_parser", "main"]
 
@@ -54,6 +55,11 @@ def build_parser() -> argparse.ArgumentParser:
     physics_cmd.add_argument("--rh", type=float, required=True, metavar="PCT")
     physics_cmd.add_argument("--lux", type=float, default=None, metavar="LUX")
     physics_cmd.add_argument("--lux-per-ppfd", type=float, default=54.0)
+
+    sub.add_parser(
+        "doctor",
+        help="scan the I2C bus and report each configured sensor's address",
+    )
 
     return parser
 
@@ -118,6 +124,46 @@ def _cmd_physics(temp: float, rh: float, lux: float | None, lux_per_ppfd: float)
     return 0
 
 
+def _cmd_doctor(config_dir: Path) -> int:
+    config = load_config(config_dir)
+    configured = [
+        ConfiguredSensor(
+            slug=sensor.slug,
+            address=sensor.address,
+            mux_address=sensor.mux_address,
+            mux_channel=sensor.mux_channel,
+        )
+        for sensor in config.sensors
+        if sensor.enabled and sensor.address is not None
+    ]
+    if not configured:
+        print("No enabled sensor declares an I2C address; nothing to scan.")
+        return 0
+
+    diagnoses = run_doctor(configured)
+    width = max(len(d.sensor) for d in diagnoses)
+    marker = {"answered": "ok  ", "absent": "MISS", "wrong_address": "WARN"}
+    failed = 0
+    for d in diagnoses:
+        detail = f"  {d.detail}" if d.detail else ""
+        print(
+            f"{marker[d.status]}  {d.sensor.ljust(width)}  "
+            f"0x{d.address:02x}  {d.status}{detail}"
+        )
+        if d.status != "answered":
+            failed += 1
+
+    print()
+    if failed:
+        print(
+            f"{failed} of {len(diagnoses)} sensor(s) not confirmed at their "
+            "configured address."
+        )
+    else:
+        print(f"All {len(diagnoses)} configured sensor(s) answered.")
+    return 1 if failed else 0
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
@@ -125,6 +171,8 @@ def main(argv: list[str] | None = None) -> int:
             return _cmd_config_check(args.config_dir)
         if args.command == "physics":
             return _cmd_physics(args.temp, args.rh, args.lux, args.lux_per_ppfd)
+        if args.command == "doctor":
+            return _cmd_doctor(args.config_dir)
     except BrokenPipeError:
         # Output was piped into something that closed early -- `| head`, or a
         # pager the user quit. That is normal usage, not a failure. Point the
