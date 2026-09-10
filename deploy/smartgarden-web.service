@@ -1,0 +1,29 @@
+[Unit]
+Description=SmartGarden JSON API (dashboard backend)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/SmartGarden
+ExecStart=%h/SmartGarden/.venv/bin/smartgarden web
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+# Independent of smartgarden-control.service on purpose (ARCH-1): a crash
+# here, or a deploy of a UI change, must never interrupt watering. The two
+# units share nothing but the SQLite database file; neither is a
+# dependency of the other in this file, and neither process imports the
+# other's code.
+#
+# Not installed, enabled or started by anything in this repository --
+# docs/git-workflow.md section 3: only a person runs `systemctl --user
+# enable --now` on this. app.toml's web_host defaults to 127.0.0.1 (not
+# reachable from the tailnet) rather than guessing at how this should be
+# exposed -- see the layer 05 pull request for the open question against
+# docs/pi-setup.md section 7's "reachable at <tailscale-name>:8000".
+# There is no login on this API by default; API-4's token auth is off
+# unless app.toml sets api_token.
+[Install]
+WantedBy=default.target

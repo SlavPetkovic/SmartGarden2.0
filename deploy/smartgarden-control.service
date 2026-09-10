@@ -1,0 +1,25 @@
+[Unit]
+Description=SmartGarden control loop (observe-only until the soak signs off, then guards and actuation)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/SmartGarden
+ExecStart=%h/SmartGarden/.venv/bin/smartgarden run
+# Layer 04b (SAFE-4) adds this script. Until then there is nothing to force
+# off: stage A's loop has no actuation path at all, so a crash here cannot
+# leave an output on. Do not point this at anything before that script
+# exists -- a missing ExecStopPost target is a loud, safe failure; enabling
+# this unit before scripts/panic_off.py exists is a person's call, not
+# this file's.
+ExecStopPost=%h/SmartGarden/.venv/bin/python %h/SmartGarden/scripts/panic_off.py
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+# Not installed, enabled or started by anything in this repository --
+# docs/git-workflow.md section 3: only a person runs `systemctl --user
+# enable --now` on this.
+[Install]
+WantedBy=default.target
