@@ -1,14 +1,16 @@
 """Command-line entry point.
 
-Layer 1 provided `config check` and `physics`. Layer 3 adds `doctor`. Later
-layers add `run`, `web`, `export` and `backup` as subcommands here.
+Layer 1 provided `config check` and `physics`. Layer 3 added `doctor`.
+Layer 4a adds `run`. Later layers add `web`, `export` and `backup`.
 """
 
 from __future__ import annotations
 
 import argparse
+import logging
 import os
 import sys
+import time
 from pathlib import Path
 
 from smartgarden import __version__
@@ -20,6 +22,9 @@ from smartgarden.core.physics import (
     vapour_pressure_deficit,
 )
 from smartgarden.drivers.doctor import ConfiguredSensor, run_doctor
+from smartgarden.runtime import build_control_loop
+from smartgarden.storage.db import connect
+from smartgarden.storage.repository import Repository
 
 __all__ = ["build_parser", "main"]
 
@@ -59,6 +64,15 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser(
         "doctor",
         help="scan the I2C bus and report each configured sensor's address",
+    )
+
+    run_cmd = sub.add_parser(
+        "run", help="run the control loop in the foreground (observe-only in stage A)"
+    )
+    run_cmd.add_argument(
+        "--once",
+        action="store_true",
+        help="run a single tick and exit, instead of looping",
     )
 
     return parser
@@ -164,6 +178,47 @@ def _cmd_doctor(config_dir: Path) -> int:
     return 1 if failed else 0
 
 
+def _cmd_run(config_dir: Path, *, once: bool) -> int:
+    config = load_config(config_dir)
+    logging.basicConfig(
+        level=config.app.log_level,
+        format="%(asctime)s %(levelname)-8s %(name)s: %(message)s",
+    )
+    logger = logging.getLogger("smartgarden.run")
+
+    db_path = Path(config.app.database_path)
+    if not db_path.is_absolute():
+        db_path = config_dir.parent / db_path
+    conn = connect(db_path)
+    try:
+        loop = build_control_loop(Repository(conn), config)
+
+        logger.info(
+            "control loop starting: automation_enabled=%s tick_seconds=%.1f db=%s",
+            config.app.automation_enabled,
+            config.app.tick_seconds,
+            db_path,
+        )
+        if not config.app.automation_enabled:
+            logger.info(
+                "automation is disabled -- observing only, nothing will be driven"
+            )
+
+        loop.tick()
+        if once:
+            return 0
+
+        try:
+            while True:
+                time.sleep(config.app.tick_seconds)
+                loop.tick()
+        except KeyboardInterrupt:
+            logger.info("stopping on interrupt")
+            return 0
+    finally:
+        conn.close()
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
@@ -173,6 +228,8 @@ def main(argv: list[str] | None = None) -> int:
             return _cmd_physics(args.temp, args.rh, args.lux, args.lux_per_ppfd)
         if args.command == "doctor":
             return _cmd_doctor(args.config_dir)
+        if args.command == "run":
+            return _cmd_run(args.config_dir, once=args.once)
     except BrokenPipeError:
         # Output was piped into something that closed early -- `| head`, or a
         # pager the user quit. That is normal usage, not a failure. Point the
