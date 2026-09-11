@@ -5,7 +5,7 @@
    truly gone, including on first paint after a reload. */
 "use strict";
 
-const CACHE = "smartgarden-shell-v1";
+const CACHE = "smartgarden-shell-v2";
 const SHELL = ["/", "/index.html", "/app.js", "/manifest.webmanifest", "/icons/icon.svg"];
 
 self.addEventListener("install", (event) => {

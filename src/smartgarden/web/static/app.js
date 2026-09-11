@@ -1,6 +1,8 @@
-/* SmartGarden dashboard: makes docs/dashboard.html real against the live
-   API. Every value on screen names its provenance (a role in a zone) and
-   nothing here names a driver except the Health view (DATA-3, SCOPE-3). */
+/* SmartGarden dashboard: makes the API real in the browser. Every value on
+   screen names its provenance (a role in a zone) and nothing here names a
+   driver except the Health view (DATA-3, SCOPE-3). Reskinned to the second
+   mockup's visual language; the data-binding below is otherwise the same
+   logic layer 06 shipped with. */
 "use strict";
 
 (function () {
@@ -9,8 +11,31 @@
   const RECENT_HOURS = 2;
   const FALLBACK_DAYS = 30;
 
+  const PLANT_EMOJI = { monstera: "🪴", fern: "🌿" }; // 🪴 🌿
+
+  const ICONS = {
+    home: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10.5V20h13v-9.5"/><path d="M9.5 20v-5h5v5"/></svg>`,
+    plant: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 21v-8"/><path d="M12 13c-5 0-7-3-7-7 5 0 7 3 7 7Z"/><path d="M12 12c5 0 7-3 7-7-5 0-7 3-7 7Z"/></svg>`,
+    chart: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 19V9M12 19V5M19 19v-7"/><path d="M3 19h18"/></svg>`,
+    health: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M22 12h-4l-3 8-4-16-3 8H2"/></svg>`,
+    log: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>`,
+  };
+  const ICON_TEMP = `<svg viewBox="0 0 32 32"><path d="M14 6a4 4 0 0 1 8 0v12.1a7 7 0 1 1-8 0Z" fill="#eef0e9" opacity=".95"/><path d="M18 9v12" stroke="#ff6540" stroke-width="3" stroke-linecap="round"/><circle cx="18" cy="23" r="4" fill="#ff6540"/></svg>`;
+  const ICON_HUMIDITY = `<svg viewBox="0 0 32 32"><path d="M16 3C12 9 8 13 8 19a8 8 0 0 0 16 0c0-6-4-10-8-16Z" fill="#3da6ff"/><path d="M12 21c.7 2.1 2.1 3.2 4.3 3.2" fill="none" stroke="#bce4ff" stroke-width="1.5" stroke-linecap="round"/></svg>`;
+  const ICON_LEAF = `<svg viewBox="0 0 32 32"><path d="M26 5C15 6 8 12 8 22c7 1 13-2 16-7 2-4 3-7 2-10Z" fill="#2dd15a"/><path d="M9 27c2-7 7-13 14-18" fill="none" stroke="#b6ffbd" stroke-width="1.5" stroke-linecap="round"/></svg>`;
+  const ICON_SUN = `<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="6" fill="#ffc21f"/><g stroke="#ffc21f" stroke-width="2" stroke-linecap="round"><path d="M16 3v4M16 25v4M3 16h4M25 16h4M7 7l3 3M22 22l3 3M25 7l-3 3M10 22l-3 3"/></g></svg>`;
+
+  const NAV = [
+    { key: "home", label: "Home", icon: "home", theme: "dark" },
+    { key: "plants", label: "Plants", icon: "plant", theme: "brown" },
+    { key: "analytics", label: "Analytics", icon: "chart", theme: "light" },
+    { key: "health", label: "Health", icon: "health", theme: "dark", badge: true },
+    { key: "log", label: "Log", icon: "log", theme: "dark" },
+  ];
+
   let unit = "C";
   let rangeHours = 24;
+  let currentScreen = "home";
   let model = null; // { channels, plants, zones, health }
 
   // ---------------------------------------------------------------------
@@ -54,6 +79,23 @@
     return null;
   }
 
+  async function fetchActuations(zoneSlug, hours) {
+    const { start, end } = isoRange(hours, 0);
+    return api(
+      `/zones/${encodeURIComponent(zoneSlug)}/actuations?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`
+    ).catch(() => []);
+  }
+
+  async function lastWateringFor(zoneSlug) {
+    const rows = await fetchActuations(zoneSlug, 24 * 30);
+    let max = null;
+    for (const r of rows) {
+      const d = new Date(r.at);
+      if (!max || d > max) max = d;
+    }
+    return max;
+  }
+
   function ageSeconds(at) {
     return Math.max(0, (Date.now() - at.getTime()) / 1000);
   }
@@ -71,6 +113,39 @@
 
   function cToDisplay(c) {
     return unit === "C" ? c : (c * 9) / 5 + 32;
+  }
+
+  /* Current hour in the zone's own timezone, not the viewer's browser --
+     the Pi and the phone looking at it are not guaranteed to share one. */
+  function zoneHour(tz) {
+    try {
+      return Number(new Intl.DateTimeFormat("en-US", { timeZone: tz, hour: "numeric", hour12: false }).format(new Date())) % 24;
+    } catch {
+      return new Date().getHours();
+    }
+  }
+
+  function greetingText(hour) {
+    if (hour < 12) return "Good morning, Slav!";
+    if (hour < 18) return "Good afternoon, Slav!";
+    return "Good evening, Slav!";
+  }
+
+  function emojiFor(slug) {
+    return PLANT_EMOJI[slug] || "🌱"; // 🌱
+  }
+
+  function statusColor(cls) {
+    if (cls === "warn") return "var(--warn)";
+    if (cls === "crit") return "var(--crit)";
+    if (cls === "info") return "var(--muted)";
+    return "var(--good)";
+  }
+
+  function escapeHtml(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+    })[c]);
   }
 
   // ---------------------------------------------------------------------
@@ -100,157 +175,185 @@
     return channelsFor((c) => c.zone === zoneSlug && c.plant === null && c.role === role)[0] || null;
   }
 
+  // moisture stays in real Seesaw counts everywhere (never a percentage) --
+  // this only adds a qualitative read of that number once a plant has a
+  // calibrated band (docs/dashboard.html's "never a percentage" rule).
+  function moistureStatus(value, low, high, staleSeconds) {
+    if (staleSeconds > 300) return { cls: "warn", label: "Sensor stale" };
+    if (low == null || high == null) return { cls: "info", label: "No band set" };
+    if (value < low) return { cls: "warn", label: "Dry side" };
+    if (value > high) return { cls: "warn", label: "Wet side" };
+    return { cls: "good", label: "Healthy" };
+  }
+
+  async function computePlantSummaries() {
+    const out = [];
+    for (const plant of model.plants) {
+      const moistureCh = channelForPlantRole(plant.slug, "soil_moisture");
+      const tempCh = channelForPlantRole(plant.slug, "soil_temp");
+      const moisture = moistureCh ? await latestFor(moistureCh.id) : null;
+      const soilTemp = tempCh ? await latestFor(tempCh.id) : null;
+      const staleSeconds = moisture ? ageSeconds(moisture.at) : Infinity;
+      const status = moisture
+        ? moistureStatus(moisture.value, plant.moisture_low, plant.moisture_high, staleSeconds)
+        : { cls: "info", label: "No data" };
+      out.push({ plant, moistureCh, moisture, soilTemp, staleSeconds, status });
+    }
+    return out;
+  }
+
   // ---------------------------------------------------------------------
-  // hero
+  // hero (home)
   // ---------------------------------------------------------------------
 
   async function renderHero() {
     const zone = model.zones[0];
-    document.getElementById("greeting").textContent = zone ? zone.name : "SmartGarden";
-    document.getElementById("subgreet").textContent = zone
-      ? `${model.plants.length} plant${model.plants.length === 1 ? "" : "s"}`
-      : "No zones configured yet";
-
-    const tileDefs = zone
-      ? [
-          ["air_temp", "Air temp", "temp"],
-          ["humidity", "Humidity", "pct"],
-          ["vpd", "VPD", "kpa"],
-          ["light", "Light", "lux"],
-        ]
-      : [];
+    document.getElementById("greeting").textContent = greetingText(zone ? zoneHour(zone.timezone) : new Date().getHours());
 
     const tiles = document.getElementById("hero-tiles");
     tiles.innerHTML = "";
-    for (const [role, label, kind] of tileDefs) {
+    if (!zone) {
+      tiles.innerHTML = `<div class="empty">No zones configured yet.</div>`;
+      return;
+    }
+    const defs = [
+      ["air_temp", "Air Temp", "temp", ICON_TEMP],
+      ["humidity", "Humidity", "pct", ICON_HUMIDITY],
+      ["vpd", "VPD", "kpa", ICON_LEAF],
+      ["light", "Light", "lux", ICON_SUN],
+    ];
+    for (const [role, label, kind, icon] of defs) {
       const channel = channelForZoneRole(zone.slug, role);
-      const tile = document.createElement("div");
-      tile.className = "tile";
-      if (!channel) {
-        tile.innerHTML = `<div><div class="k">${label}</div><div class="v">&ndash;</div></div>`;
-        tiles.appendChild(tile);
-        continue;
-      }
+      const card = document.createElement("div");
+      card.className = "sensor-card";
+      card.innerHTML = `<div class="sensor-icon">${icon}</div><div class="sensor-meta"><div class="sensor-label">${label}</div><div class="sensor-value">&hellip;</div></div>`;
+      tiles.appendChild(card);
+      const v = card.querySelector(".sensor-value");
+      if (!channel) { v.textContent = "–"; continue; }
       const latest = await latestFor(channel.id);
-      tile.innerHTML = `<div><div class="k">${label}</div><div class="v">&hellip;</div></div>`;
-      tiles.appendChild(tile);
-      const v = tile.querySelector(".v");
-      if (!latest) {
-        v.textContent = "no data";
-      } else if (kind === "temp") {
-        v.innerHTML = `${cToDisplay(latest.value).toFixed(1)}<span class="u">&deg;${unit}</span>`;
-      } else if (kind === "pct") {
-        v.innerHTML = `${latest.value.toFixed(0)}<span class="u">%</span>`;
-      } else if (kind === "kpa") {
-        v.innerHTML = `${latest.value.toFixed(2)}<span class="u">kPa</span>`;
-      } else {
-        v.innerHTML = `${Math.round(latest.value).toLocaleString()}<span class="u">lux</span>`;
-      }
+      if (!latest) { v.textContent = "no data"; continue; }
+      if (kind === "temp") v.innerHTML = `${cToDisplay(latest.value).toFixed(1)}<span class="u">&deg;${unit}</span>`;
+      else if (kind === "pct") v.innerHTML = `${latest.value.toFixed(0)}<span class="u">%</span>`;
+      else if (kind === "kpa") v.innerHTML = `${latest.value.toFixed(2)}<span class="u">kPa</span>`;
+      else v.innerHTML = `${Math.round(latest.value).toLocaleString()}<span class="u">lux</span>`;
     }
   }
 
-  // ---------------------------------------------------------------------
-  // plants panel
-  // ---------------------------------------------------------------------
-
-  function moistureStatusPill(value, low, high, staleSeconds) {
-    if (staleSeconds > 300) return { cls: "warn", label: "Sensor stale" };
-    if (low == null || high == null) return { cls: "info", label: "No band set" };
-    if (value < low || value > high) return { cls: "crit", label: "Out of band" };
-    return { cls: "good", label: "Healthy" };
+  function updateSubgreet(summaries) {
+    const el = document.getElementById("subgreet");
+    if (!model.zones.length) { el.textContent = "No zones configured yet"; return; }
+    if (!summaries.length) { el.textContent = "No plants configured yet"; return; }
+    const issues = summaries.filter((s) => s.status.cls === "warn" || s.status.cls === "crit");
+    el.textContent = issues.length
+      ? issues.map((s) => `${s.plant.name}: ${s.status.label.toLowerCase()}`).join(" · ")
+      : "Healthy plants. A calmer you.";
   }
 
-  async function renderPlantCard(plant) {
-    const moistureCh = channelForPlantRole(plant.slug, "soil_moisture");
-    const tempCh = channelForPlantRole(plant.slug, "soil_temp");
-    const moisture = moistureCh ? await latestFor(moistureCh.id) : null;
-    const soilTemp = tempCh ? await latestFor(tempCh.id) : null;
+  function renderHomePlantList(summaries) {
+    const container = document.getElementById("home-plant-list");
+    if (!summaries.length) {
+      container.innerHTML = `<div class="empty" style="padding:8px 0">No plants configured yet.</div>`;
+      return;
+    }
+    container.innerHTML = summaries.map((s) => `
+      <button class="plant-item" data-goto="plants">
+        <div class="plant-thumb">${emojiFor(s.plant.slug)}</div>
+        <div><div class="plant-name">${escapeHtml(s.plant.name)}</div><div class="plant-state ${s.status.cls === "good" ? "" : s.status.cls}">${escapeHtml(s.status.label)}</div></div>
+        <div class="arrow">&rsaquo;</div>
+      </button>
+    `).join("");
+  }
 
-    const staleSeconds = moisture ? ageSeconds(moisture.at) : Infinity;
-    const low = plant.moisture_low, high = plant.moisture_high;
-    const status = moisture
-      ? moistureStatusPill(moisture.value, low, high, staleSeconds)
-      : { cls: "info", label: "No data" };
+  async function renderHomeSchedule() {
+    const container = document.getElementById("home-schedule");
+    const zone = model.zones[0];
+    if (!zone) { container.innerHTML = `<div class="empty" style="padding:8px 0">No zone configured.</div>`; return; }
+    const zonePlants = model.plants.filter((p) => p.zone === zone.slug);
+    const hourNow = zoneHour(zone.timezone);
 
-    const card = document.createElement("article");
-    card.className = "card lift";
+    const windows = new Map();
+    for (const p of zonePlants) {
+      if (p.photoperiod_start_hour == null || p.photoperiod_end_hour == null) continue;
+      const key = p.photoperiod_start_hour + "-" + p.photoperiod_end_hour;
+      if (!windows.has(key)) windows.set(key, { start: p.photoperiod_start_hour, end: p.photoperiod_end_hour, plants: [] });
+      windows.get(key).plants.push(p.name);
+    }
 
-    // The meter's axis is the sensor's own plausible range (what the
-    // hardware can actually report, e.g. a Seesaw's ~200-2000 counts) --
-    // never a percentage, and never just the plant's own target band,
-    // which is drawn as an overlay on that same axis (DATA-3's "every
-    // value names its provenance" applies to the meter too).
-    const axisMin = moistureCh && moistureCh.plausible_min != null ? moistureCh.plausible_min : (low != null ? low : 0);
-    const axisMax = moistureCh && moistureCh.plausible_max != null ? moistureCh.plausible_max : (high != null ? high : 100);
-    const axisSpan = Math.max(1, axisMax - axisMin);
-    const pct = (v) => Math.min(100, Math.max(0, ((v - axisMin) / axisSpan) * 100));
-    const trackFill = moisture ? pct(moisture.value) : 0;
-    const bandStyle = low != null && high != null
-      ? `left:${pct(low).toFixed(1)}%; right:${(100 - pct(high)).toFixed(1)}%`
-      : null;
+    const items = [];
+    for (const w of windows.values()) {
+      const suffix = w.plants.length === zonePlants.length ? "" : ` (${w.plants.join(", ")})`;
+      items.push({ hour: w.start, minute: 0, text: "Grow lights ON" + suffix, done: hourNow >= w.start });
+      items.push({ hour: w.end, minute: 0, text: "Grow lights OFF" + suffix, done: hourNow >= w.end });
+    }
 
-    card.innerHTML = `
-      <div class="cardhead">
-        <div><h3>${escapeHtml(plant.name)}</h3>
-        <div class="sub">${escapeHtml(plant.species || plant.zone)}${plant.location ? " &middot; " + escapeHtml(plant.location) : ""}</div></div>
-        <span class="spacer"></span>
-        <span class="pill ${status.cls}"><span class="dot"></span>${status.label}</span>
-      </div>
-      <div class="meter">
-        <div class="meterrow">
-          <span class="bignum ${staleSeconds > 300 ? "stale" : ""}">${moisture ? Math.round(moisture.value) : "&ndash;"}</span>
-          <span class="unit">${moisture ? "counts" + (staleSeconds > 300 ? " &middot; " + fmtAge(staleSeconds) : "") : "no reading yet"}</span>
+    const actuations = await fetchActuations(zone.slug, 24);
+    for (const a of actuations) {
+      const at = new Date(a.at);
+      items.push({
+        hour: at.getHours(), minute: at.getMinutes(),
+        text: `${escapeHtml(a.action)} — ${escapeHtml(a.device)}${a.actual_seconds != null ? " (" + Math.round(a.actual_seconds) + "s)" : ""}`,
+        done: true,
+      });
+    }
+
+    items.sort((a, b) => (a.hour * 60 + a.minute) - (b.hour * 60 + b.minute));
+
+    container.innerHTML = items.length
+      ? items.map((it) => `
+        <div class="trow ${it.done ? "done" : ""}">
+          <b>${String(it.hour).padStart(2, "0")}:${String(it.minute).padStart(2, "0")}</b>
+          <span>${it.text}</span>
         </div>
-        <div class="track">
-          ${bandStyle ? `<div class="band" style="${bandStyle}"></div>` : ""}
-          <div class="fill ${staleSeconds > 300 ? "stale" : ""}" style="width:${trackFill}%"></div>
-        </div>
-        <div class="ticks"><span>${Math.round(axisMin)}</span><span>${low != null ? low + " · " + high : ""}</span><span>${Math.round(axisMax)}</span></div>
+      `).join("")
+      : `<div class="empty" style="padding:8px 0">Nothing scheduled.</div>`;
+  }
+
+  async function renderHomeGrowlight() {
+    const container = document.getElementById("home-growlight");
+    const zone = model.zones[0];
+    if (!zone) { container.innerHTML = `<div class="empty" style="padding:8px 0">No zone configured.</div>`; return; }
+    const hourNow = zoneHour(zone.timezone);
+    const zonePlants = model.plants.filter((p) => p.zone === zone.slug && p.photoperiod_start_hour != null && p.photoperiod_end_hour != null);
+
+    let on = false, windowText = "No photoperiod set";
+    if (zonePlants.length) {
+      const start = Math.min(...zonePlants.map((p) => p.photoperiod_start_hour));
+      const end = Math.max(...zonePlants.map((p) => p.photoperiod_end_hour));
+      on = hourNow >= start && hourNow < end;
+      windowText = `${String(start).padStart(2, "0")}:00–${String(end).padStart(2, "0")}:00`;
+    }
+
+    const lightCh = channelForZoneRole(zone.slug, "light");
+    const light = lightCh ? await latestFor(lightCh.id) : null;
+
+    container.innerHTML = `
+      <div class="growlight-status">
+        <span class="gpill ${on ? "on" : "off"}">${on ? "ON" : "OFF"}</span>
+        <span style="font-size:11px;color:#cfd8d2">window ${windowText}</span>
       </div>
-      <div class="kvs">
-        <div class="kv"><div class="k">Soil temp</div><div class="v">${soilTemp ? cToDisplay(soilTemp.value).toFixed(1) + " °" + unit : "&ndash;"}</div></div>
-        <div class="kv"><div class="k">Reading age</div><div class="v">${moisture ? fmtAge(ageSeconds(moisture.at)) : "never"}</div></div>
-      </div>
-      <div class="actions">
-        <button class="btn primary" data-water="${escapeHtml(plant.zone)}">Water zone now</button>
-        <button class="btn" data-history="${escapeHtml(plant.slug)}">History</button>
-      </div>
-      <div class="guardnote">Manual actions pass the same guards as automatic ones.</div>
-      <details class="settings">
-        <summary>Edit thresholds</summary>
-        <form class="settingsform" data-plant="${escapeHtml(plant.slug)}">
-          <label>Moisture low<input type="number" name="moisture_low" value="${low != null ? low : ""}" step="any"></label>
-          <label>Moisture high<input type="number" name="moisture_high" value="${high != null ? high : ""}" step="any"></label>
-          <label>DLI target (mol)<input type="number" name="dli_target_moles" value="${plant.dli_target_moles != null ? plant.dli_target_moles : ""}" step="any"></label>
-          <span></span>
-          <div class="full"><button type="submit" class="btn primary" style="flex:none">Save</button></div>
-        </form>
-      </details>
+      <div class="growlight-row"><span>Ambient light</span><b>${light ? Math.round(light.value).toLocaleString() + " lux" : "no data"}</b></div>
+      <div class="growlight-row"><span>Reading age</span><b>${light ? fmtAge(ageSeconds(light.at)) : "—"}</b></div>
     `;
-    return card;
   }
 
-  async function renderPlants() {
+  // ---------------------------------------------------------------------
+  // plants screen
+  // ---------------------------------------------------------------------
+
+  async function renderPlants(summaries) {
     const container = document.getElementById("plant-cards");
     container.innerHTML = "";
     if (!model.plants.length) {
       container.innerHTML = `<div class="empty">No plants configured yet. Add one to config/plants.toml.</div>`;
       return;
     }
-    for (const plant of model.plants) {
-      container.appendChild(await renderPlantCard(plant));
+    for (const s of summaries) {
+      container.appendChild(await renderPlantPanel(s));
     }
 
-    // stale-sensor banner: any plant whose soil reading is >5min old
     let staleName = null;
-    for (const plant of model.plants) {
-      const ch = channelForPlantRole(plant.slug, "soil_moisture");
-      if (!ch) continue;
-      const latest = await latestFor(ch.id);
-      if (!latest || ageSeconds(latest.at) > 300) {
-        staleName = plant.name;
-        break;
-      }
+    for (const s of summaries) {
+      if (!s.moisture || s.staleSeconds > 300) { staleName = s.plant.name; break; }
     }
     const banner = document.getElementById("stale-banner");
     if (staleName) {
@@ -260,8 +363,70 @@
     } else {
       banner.hidden = true;
     }
+  }
 
-    renderZoneCards();
+  async function renderPlantPanel(s) {
+    const { plant, moisture, soilTemp, status } = s;
+    const humidityCh = channelForZoneRole(plant.zone, "humidity");
+    const lightCh = channelForZoneRole(plant.zone, "light");
+    const humidity = humidityCh ? await latestFor(humidityCh.id) : null;
+    const light = lightCh ? await latestFor(lightCh.id) : null;
+    const lastWater = await lastWateringFor(plant.zone);
+
+    const wrap = document.createElement("div");
+    wrap.className = "plant-shell";
+    wrap.innerHTML = `
+      <div class="plant-profile">
+        <div class="plant-art">${emojiFor(plant.slug)}</div>
+        <div class="plant-info">
+          <h2>${escapeHtml(plant.name)}</h2>
+          <div class="latin">${escapeHtml(plant.species)}</div>
+          <div class="healthy" style="color:${statusColor(status.cls)}">&#9679; ${escapeHtml(status.label)}</div>
+          <div class="last-water">${lastWater ? "Last watered " + fmtAge(ageSeconds(lastWater)) : "No watering recorded yet"}</div>
+          ${plant.notes ? `<div class="quote-plant">&ldquo;${escapeHtml(plant.notes)}&rdquo;</div>` : ""}
+        </div>
+      </div>
+      <div class="plant-main">
+        <div class="plant-sensors">
+          <div class="plant-sensor">
+            <div class="p-label">Soil Moisture</div>
+            <div class="p-value">${moisture ? Math.round(moisture.value) : "&ndash;"}<span class="u">counts</span></div>
+            <div class="p-state ${status.cls === "good" ? "ok" : status.cls}">${escapeHtml(status.label)}</div>
+          </div>
+          <div class="plant-sensor">
+            <div class="p-label">Soil Temp</div>
+            <div class="p-value">${soilTemp ? cToDisplay(soilTemp.value).toFixed(1) : "&ndash;"}<span class="u">&deg;${unit}</span></div>
+            <div class="p-state">${soilTemp ? fmtAge(ageSeconds(soilTemp.at)) : "no data"}</div>
+          </div>
+          <div class="plant-sensor">
+            <div class="p-label">Light (zone)</div>
+            <div class="p-value">${light ? Math.round(light.value).toLocaleString() : "&ndash;"}<span class="u">lux</span></div>
+            <div class="p-state">${light ? fmtAge(ageSeconds(light.at)) : "no data"}</div>
+          </div>
+          <div class="plant-sensor">
+            <div class="p-label">Humidity (zone)</div>
+            <div class="p-value">${humidity ? humidity.value.toFixed(0) : "&ndash;"}<span class="u">%</span></div>
+            <div class="p-state">${humidity ? fmtAge(ageSeconds(humidity.at)) : "no data"}</div>
+          </div>
+        </div>
+        <div class="plant-actions">
+          <button class="run" data-water="${escapeHtml(plant.zone)}">Water zone now</button>
+          <button class="run" style="background:transparent;border-color:rgba(255,255,255,.25)" data-goto="analytics">View trends</button>
+        </div>
+        <div class="guardnote">Manual actions pass the same guards as automatic ones.</div>
+        <details class="settings">
+          <summary>Edit thresholds</summary>
+          <form class="settingsform" data-plant="${escapeHtml(plant.slug)}">
+            <label>Moisture low<input type="number" name="moisture_low" value="${plant.moisture_low != null ? plant.moisture_low : ""}" step="any"></label>
+            <label>Moisture high<input type="number" name="moisture_high" value="${plant.moisture_high != null ? plant.moisture_high : ""}" step="any"></label>
+            <label>DLI target (mol)<input type="number" name="dli_target_moles" value="${plant.dli_target_moles != null ? plant.dli_target_moles : ""}" step="any"></label>
+            <span></span>
+            <div class="full"><button type="submit" class="run" style="flex:none">Save</button></div>
+          </form>
+        </details>
+      </div>
+    `;
+    return wrap;
   }
 
   function renderZoneCards() {
@@ -269,12 +434,11 @@
     container.innerHTML = "";
     for (const zone of model.zones) {
       const card = document.createElement("div");
-      card.className = "card";
+      card.className = "zone-card";
+      card.style.marginBottom = "10px";
       card.innerHTML = `
-        <div class="meterrow" style="margin-bottom:9px">
-          <span class="bignum">${escapeHtml(zone.name)}</span>
-          <span class="unit">budget ${zone.daily_budget_seconds}s/day &middot; window ${String(zone.watering_start_hour).padStart(2, "0")}:00&ndash;${String(zone.watering_end_hour).padStart(2, "0")}:00</span>
-        </div>
+        <div class="zone-title">${escapeHtml(zone.name)}</div>
+        <div class="zone-meta">budget ${zone.daily_budget_seconds}s/day &middot; window ${String(zone.watering_start_hour).padStart(2, "0")}:00&ndash;${String(zone.watering_end_hour).padStart(2, "0")}:00</div>
         <div class="footnote">The budget is a ceiling, not a target. A guard may shorten a pulse
         or refuse it; nothing can lengthen one.</div>
         <details class="settings">
@@ -284,18 +448,12 @@
             <label>Max pulses/hour<input type="number" name="max_pulses_per_hour" value="${zone.max_pulses_per_hour}" step="1"></label>
             <label>Window start (hr)<input type="number" name="watering_start_hour" value="${zone.watering_start_hour}" min="0" max="23"></label>
             <label>Window end (hr)<input type="number" name="watering_end_hour" value="${zone.watering_end_hour}" min="0" max="23"></label>
-            <div class="full"><button type="submit" class="btn primary" style="flex:none">Save</button></div>
+            <div class="full"><button type="submit" class="run" style="flex:none">Save</button></div>
           </form>
         </details>
       `;
       container.appendChild(card);
     }
-  }
-
-  function escapeHtml(s) {
-    return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({
-      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-    })[c]);
   }
 
   // ---------------------------------------------------------------------
@@ -322,7 +480,7 @@
           method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
         });
         toast("Saved");
-        renderPlants();
+        await refresh();
       } catch (err) {
         toast("Could not save: " + err.message);
       }
@@ -340,7 +498,7 @@
           method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
         });
         toast("Saved");
-        loadModel().then(() => renderZoneCards());
+        await refresh();
       } catch (err) {
         toast("Could not save: " + err.message);
       }
@@ -348,10 +506,38 @@
   });
 
   // ---------------------------------------------------------------------
-  // manual actions (ARCH-3)
+  // navigation + manual actions (ARCH-3)
   // ---------------------------------------------------------------------
 
+  function buildNav() {
+    document.getElementById("sidebar-menu").innerHTML = NAV.map((n) => `
+      <button class="menu-btn" data-screen="${n.key}">${ICONS[n.icon]}${n.label}${n.badge ? '<span class="badge" data-badge="health" hidden>0</span>' : ""}</button>
+    `).join("");
+    document.getElementById("mobile-nav").innerHTML = NAV.map((n) => `
+      <button data-screen="${n.key}">${ICONS[n.icon]}<span>${n.label}</span>${n.badge ? '<span class="badge" data-badge="health" hidden>0</span>' : ""}</button>
+    `).join("");
+  }
+
+  function updateNavSelection(key) {
+    document.querySelectorAll("#sidebar-menu [data-screen], #mobile-nav [data-screen]").forEach((b) => {
+      b.setAttribute("aria-selected", String(b.dataset.screen === key));
+    });
+    document.getElementById("sidebar").dataset.theme = NAV.find((n) => n.key === key).theme;
+  }
+
+  function selectScreen(key) {
+    currentScreen = key;
+    document.querySelectorAll(".screen").forEach((s) => s.classList.toggle("active", s.dataset.screen === key));
+    updateNavSelection(key);
+    if (key === "analytics" && model) renderHistory();
+    window.scrollTo(0, 0);
+  }
+
   document.addEventListener("click", async (ev) => {
+    const navBtn = ev.target.closest("[data-screen]");
+    if (navBtn) { selectScreen(navBtn.dataset.screen); return; }
+    const gotoBtn = ev.target.closest("[data-goto]");
+    if (gotoBtn) { selectScreen(gotoBtn.dataset.goto); return; }
     const waterBtn = ev.target.closest("[data-water]");
     if (waterBtn) {
       const zone = waterBtn.dataset.water;
@@ -367,16 +553,17 @@
       } finally {
         waterBtn.disabled = false;
       }
-      return;
-    }
-    const historyBtn = ev.target.closest("[data-history]");
-    if (historyBtn) {
-      selectTab("history");
     }
   });
 
+  document.getElementById("unit").addEventListener("click", () => {
+    unit = unit === "C" ? "F" : "C";
+    document.getElementById("unit").textContent = "°" + unit;
+    if (model) renderAll();
+  });
+
   // ---------------------------------------------------------------------
-  // history (UI-6)
+  // history / analytics (UI-6)
   // ---------------------------------------------------------------------
 
   async function fetchSeries(channelId, hours) {
@@ -385,10 +572,7 @@
   }
 
   async function fetchEvents(zoneSlug, hours) {
-    const { start, end } = isoRange(hours, 0);
-    const rows = await api(
-      `/zones/${encodeURIComponent(zoneSlug)}/actuations?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`
-    ).catch(() => []);
+    const rows = await fetchActuations(zoneSlug, hours);
     return rows.map((r) => new Date(r.at));
   }
 
@@ -408,6 +592,10 @@
       if (ch) targets.push({ title: `${plant.name} soil moisture`, sub: `Capacitance counts${plant.moisture_low != null ? ` · target band ${plant.moisture_low}–${plant.moisture_high}` : ""}`, channel: ch, band: plant.moisture_low != null && plant.moisture_high != null ? [plant.moisture_low, plant.moisture_high] : null, zone: plant.zone });
     }
     for (const zone of model.zones) {
+      const airTemp = channelForZoneRole(zone.slug, "air_temp");
+      if (airTemp) targets.push({ title: "Air temperature", sub: "Zone air temperature", channel: airTemp, band: null, zone: zone.slug });
+      const humidity = channelForZoneRole(zone.slug, "humidity");
+      if (humidity) targets.push({ title: "Humidity", sub: "Relative humidity", channel: humidity, band: null, zone: zone.slug });
       const light = channelForZoneRole(zone.slug, "light");
       if (light) targets.push({ title: "Light", sub: "Measured illuminance", channel: light, band: null, zone: zone.slug });
       const vpd = channelForZoneRole(zone.slug, "vpd");
@@ -422,14 +610,14 @@
     let firstTier = null;
     for (const t of targets) {
       const card = document.createElement("div");
-      card.className = "card lift";
-      card.style.marginTop = "12px";
+      card.className = "chart-card";
       const chartId = "chart-" + Math.random().toString(36).slice(2);
       const tipId = "tip-" + chartId;
       card.innerHTML = `
-        <div class="cardhead"><div><h3>${escapeHtml(t.title)}</h3><div class="sub">${t.sub}</div></div></div>
+        <div class="chart-title">${escapeHtml(t.title)}</div>
+        <div class="chart-sub">${t.sub}</div>
         <div class="chartbox">
-          <div class="chartwrap"><svg class="chart" id="${chartId}" viewBox="0 0 660 210"></svg></div>
+          <div class="chartwrap"><svg class="chart" id="${chartId}" viewBox="0 0 430 170"></svg></div>
           <div class="tip" id="${tipId}"></div>
         </div>
       `;
@@ -447,10 +635,10 @@
   }
 
   // ---------------------------------------------------------------------
-  // chart drawing -- adapted from docs/dashboard.html, fed real points
+  // chart drawing
   // ---------------------------------------------------------------------
 
-  const W = 660, H = 210, PAD = { t: 14, r: 46, b: 26, l: 46 };
+  const W = 430, H = 170, PAD = { t: 12, r: 16, b: 24, l: 44 };
   const plotW = W - PAD.l - PAD.r, plotH = H - PAD.t - PAD.b;
 
   function niceTicks(lo, hi, count) {
@@ -566,7 +754,7 @@
       <div class="row">
         <div><div class="name">${escapeHtml(n.slug)}</div><div class="meta">${escapeHtml(n.kind)}${n.description ? " · " + escapeHtml(n.description) : ""}</div></div>
         <span class="spacer"></span>
-        <span class="pill ${n.online ? "good" : "warn"}"><span class="dot"></span>${n.online ? "Online" : "Offline"}${n.last_seen_at ? " · " + fmtAge(ageSeconds(new Date(n.last_seen_at))) : ""}</span>
+        <span class="pill ${n.online ? "good" : "warn"}"><span class="dot2"></span>${n.online ? "Online" : "Offline"}${n.last_seen_at ? " · " + fmtAge(ageSeconds(new Date(n.last_seen_at))) : ""}</span>
       </div>
     `).join("") || `<div class="empty">No nodes configured.</div>`;
 
@@ -578,24 +766,23 @@
       <div class="row">
         <div><div class="name">${escapeHtml(s.slug)}</div><div class="meta">${escapeHtml(s.driver)} · ${addr}${mux} · every ${s.interval_seconds}s</div></div>
         <span class="spacer"></span>
-        <span class="pill ${s.enabled ? "good" : "warn"}"><span class="dot"></span>${s.enabled ? "Enabled" : "Disabled"}</span>
+        <span class="pill ${s.enabled ? "good" : "warn"}"><span class="dot2"></span>${s.enabled ? "Enabled" : "Disabled"}</span>
       </div>`;
     }).join("") || `<div class="empty">No sensors configured.</div>`;
 
     const offlineCount = model.health.nodes.filter((n) => !n.online).length;
-    for (const id of ["health-badge-side", "health-badge-tab"]) {
-      const badge = document.getElementById(id);
+    document.querySelectorAll('[data-badge="health"]').forEach((badge) => {
       badge.textContent = String(offlineCount);
       badge.hidden = offlineCount === 0;
-    }
+    });
 
-    const livePill = document.getElementById("live-pill");
-    const liveDetail = document.getElementById("live-detail");
     const anyOnline = model.health.nodes.some((n) => n.online);
-    livePill.className = "pill " + (anyOnline ? "good" : "warn");
-    liveDetail.textContent = model.health.nodes.length
+    document.getElementById("live-dot").className = "dot" + (anyOnline ? "" : " warn");
+    document.getElementById("live-label").textContent = anyOnline ? "Online" : "Offline";
+    document.getElementById("live-detail").textContent = model.health.nodes.length
       ? model.health.nodes.map((n) => n.slug + (n.last_seen_at ? " · " + fmtAge(ageSeconds(new Date(n.last_seen_at))) : " · never seen")).join(", ")
       : "no nodes yet";
+    document.getElementById("live-pill-mobile").className = "pill " + (anyOnline ? "good" : "warn");
   }
 
   // ---------------------------------------------------------------------
@@ -604,7 +791,6 @@
 
   async function renderLog() {
     const feed = document.getElementById("log-feed");
-    feed.innerHTML = "";
     let all = [];
     for (const zone of model.zones) {
       const decisions = await api(`/zones/${encodeURIComponent(zone.slug)}/decisions?limit=30`).catch(() => []);
@@ -628,24 +814,8 @@
   }
 
   // ---------------------------------------------------------------------
-  // navigation
+  // boot + refresh
   // ---------------------------------------------------------------------
-
-  function selectTab(tab) {
-    document.querySelectorAll('[role="tab"][data-tab]').forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === tab)));
-    document.querySelectorAll(".panel").forEach((p) => p.classList.toggle("active", p.dataset.panel === tab));
-    if (tab === "history" && model) renderHistory();
-  }
-  document.querySelectorAll('[role="tab"][data-tab]').forEach((btn) => {
-    btn.addEventListener("click", () => selectTab(btn.dataset.tab));
-  });
-
-  document.getElementById("unit").addEventListener("click", () => {
-    unit = unit === "C" ? "F" : "C";
-    document.getElementById("unit").textContent = "°" + unit;
-    renderHero();
-    renderPlants();
-  });
 
   let toastTimer;
   function toast(msg) {
@@ -656,28 +826,38 @@
     toastTimer = setTimeout(() => t.classList.remove("show"), 3200);
   }
 
-  // ---------------------------------------------------------------------
-  // boot + refresh
-  // ---------------------------------------------------------------------
+  async function renderAll() {
+    const summaries = await computePlantSummaries();
+    await renderHero();
+    updateSubgreet(summaries);
+    renderHomePlantList(summaries);
+    await renderHomeSchedule();
+    await renderHomeGrowlight();
+    await renderPlants(summaries);
+    renderZoneCards();
+    renderHealth();
+    await renderLog();
+    if (currentScreen === "analytics") await renderHistory();
+  }
 
   async function refresh() {
     try {
       await loadModel();
-      await renderHero();
-      await renderPlants();
-      await renderHealth();
-      await renderLog();
-      if (document.querySelector('.panel[data-panel="history"]').classList.contains("active")) {
-        await renderHistory();
-      }
+      await renderAll();
     } catch (err) {
       const detail = document.getElementById("live-detail");
       if (detail) detail.textContent = "offline — showing last known state";
-      const pill = document.getElementById("live-pill");
-      if (pill) pill.className = "pill warn";
+      const dot = document.getElementById("live-dot");
+      if (dot) dot.className = "dot warn";
+      const label = document.getElementById("live-label");
+      if (label) label.textContent = "Offline";
+      const mobilePill = document.getElementById("live-pill-mobile");
+      if (mobilePill) mobilePill.className = "pill warn";
     }
   }
 
+  buildNav();
+  updateNavSelection(currentScreen);
   refresh();
   setInterval(refresh, REFRESH_MS);
 

@@ -4,17 +4,18 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>SmartGarden</title>
-<meta name="theme-color" content="#07160F">
+<meta name="theme-color" content="#081813">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icons/icon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 
 <!--
-  Layer 06: docs/dashboard.html made real. Same design tokens, same four
-  views, same two rules that document was built to hold:
+  Layer 06 reskinned to a second mockup (warm green/cream/brown, card-based,
+  per-screen themes). Same two rules the first mock and this one were both
+  built to hold:
 
     Every value on screen is one the hardware can actually produce. Soil
     moisture is Seesaw capacitance counts against that plant's calibrated
@@ -24,465 +25,481 @@
     in a zone (DATA-3, SCOPE-3), except the Health view, where identifying
     a specific piece of hardware is the entire point.
 
-  Known gap against the mock's own implementation note: the three webfonts
-  above are still linked from Google rather than self-hosted, so they will
-  not load offline. Everything else -- the shell, the charts, live data --
-  works offline via the service worker; text falls back to the system font
-  stack already in the CSS below. See the layer 06 pull request.
+  Departures from the uploaded mockup, all agreed on before this was built:
+  moisture stays in counts with a qualitative label instead of "42%"; the
+  "Live Camera" panel is gone (no camera exists) and its slot now shows the
+  real grow-light/photoperiod status; plants are the real two from
+  config/plants.toml; Health and Log are full nav destinations rather than
+  folded into Analytics. The mockup's stock photography is replaced with
+  plain gradient/icon art -- there's no camera and no real plant photos on
+  file, so nothing here should look like a photo of a specific plant that
+  doesn't exist.
 -->
 
 <style>
   :root {
-    --bg:        #07160F;
-    --bg-deep:   #04100B;
-    --surface:   #0F241C;
-    --surface-2: #163327;
-    --surface-3: #1D4033;
-    --line:      #1D3B30;
-    --line-2:    #2B5546;
-
-    --ink:       #EDF5EF;
-    --ink-2:     #BFD2C7;
-    --muted:     #8CA79A;
-
-    --accent:      #57C8F5;
-    --accent-soft: #0C2C3C;
-    --good:        #58E66B;
-    --good-soft:   #0D2E18;
-    --warn:        #E8A33C;
-    --warn-soft:   #2E2413;
-    --crit:        #F0705C;
-    --crit-soft:   #331813;
-
-    --on-accent: #04212E;
-
-    --shadow: 0 1px 2px rgba(0,0,0,.5), 0 18px 40px -28px rgba(0,0,0,.95);
-    --radius: 12px;
-    --radius-sm: 8px;
-
-    --f-mark: "Fraunces", Georgia, "Times New Roman", serif;
-    --f-ui:   "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    --green:  #27c84a; --green2: #58e66b; --green3: #9cf1a8;
+    --dark:   #081813; --dark2:  #0b2019; --dark3:  #112a22; --dark4: #17392e;
+    --cream:  #f5f2eb; --cream2: #fbfaf7; --ink: #17201d; --muted-l: #6b756f;
+    --brown:  #211d16; --brown2: #2c261d; --brown3: #3a3227;
+    --muted:  #9eaaa5;
+    --blue: #2098f5; --orange: #ff752f; --yellow: #f9b90b; --red: #ff6540;
+    --good: #58e66b; --good-soft: rgba(88,230,107,.14);
+    --warn: #f9b90b; --warn-soft: rgba(249,185,11,.14);
+    --crit: #ff6540; --crit-soft: rgba(255,101,64,.14);
+    --border: rgba(255,255,255,.08);
+    --radius: 13px; --radius-sm: 9px;
+    --shadow: 0 16px 45px rgba(0,0,0,.22);
+    --f-mark: Georgia, "Times New Roman", serif;
+    --f-ui:   "Inter", ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
     --f-data: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
-  }
-
-  @media (prefers-color-scheme: light) {
-    :root:not([data-theme="dark"]) {
-      --bg:        #F1F5F0;
-      --bg-deep:   #E4EBE2;
-      --surface:   #FFFFFF;
-      --surface-2: #EDF2EB;
-      --surface-3: #E2EADF;
-      --line:      #DBE3D8;
-      --line-2:    #C3D0BF;
-
-      --ink:       #12201A;
-      --ink-2:     #3F4F46;
-      --muted:     #66786D;
-
-      --accent:      #0A6E93;
-      --accent-soft: #E0EFF6;
-      --good:        #237A44;
-      --good-soft:   #E1F0E6;
-      --warn:        #9A6800;
-      --warn-soft:   #F8EEDA;
-      --crit:        #AC2314;
-      --crit-soft:   #FAE4E1;
-
-      --on-accent: #FFFFFF;
-      --shadow: 0 1px 2px rgba(18,32,26,.06), 0 14px 30px -22px rgba(18,32,26,.4);
-    }
   }
 
   * { box-sizing: border-box; }
   html, body { height: 100%; }
   body {
-    margin: 0; background: var(--bg-deep); color: var(--ink);
-    font-family: var(--f-ui); font-size: 15px; line-height: 1.5;
-    -webkit-font-smoothing: antialiased;
+    margin: 0; background: var(--dark); color: #fff;
+    font-family: var(--f-ui); font-size: 14px; line-height: 1.5;
+    -webkit-font-smoothing: antialiased; overflow-x: hidden;
   }
-  button { font: inherit; color: inherit; }
-  input, select { font: inherit; color: inherit; background: var(--surface-2); border: 1px solid var(--line-2); border-radius: 7px; padding: 7px 9px; }
-  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 5px; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  input, select {
+    font: inherit; color: inherit; background: rgba(255,255,255,.06);
+    border: 1px solid var(--border); border-radius: 7px; padding: 7px 9px;
+  }
+  :focus-visible { outline: 2px solid var(--green2); outline-offset: 2px; border-radius: 5px; }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+  a, .panel-link { color: var(--blue); }
 
-  .app {
-    max-width: 1180px; margin: 0 auto;
-    background: var(--bg); min-height: 100vh;
-  }
-  @media (min-width: 900px) {
-    .app { border-left: 1px solid var(--line-2); border-right: 1px solid var(--line-2); }
-  }
+  /* ------------------------------------------------------------------- */
+  /* shell                                                                */
+  /* ------------------------------------------------------------------- */
 
-  .shell { display: grid; grid-template-columns: 232px 1fr; min-height: 100vh; }
-  @media (max-width: 780px) { .shell { grid-template-columns: 1fr; min-height: 0; } }
+  .app { min-height: 100vh; display: grid; grid-template-columns: 220px 1fr; }
+  @media (max-width: 860px) { .app { display: block; padding-bottom: 64px; } }
 
   .sidebar {
-    background: var(--surface); border-right: 1px solid var(--line);
-    padding: 20px 14px; display: flex; flex-direction: column; gap: 4px;
+    position: sticky; top: 0; height: 100vh; padding: 20px 16px 18px;
+    background: linear-gradient(180deg, var(--dark), var(--dark2));
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; z-index: 10;
   }
-  @media (max-width: 780px) { .sidebar { display: none; } }
+  @media (max-width: 860px) { .sidebar { display: none; } }
+  .sidebar[data-theme="light"] { background: var(--cream2); border-right: 1px solid #dedbd4; color: var(--ink); }
+  .sidebar[data-theme="brown"] { background: linear-gradient(180deg, var(--brown2), var(--brown)); }
 
-  .brand { display: flex; align-items: center; gap: 10px; padding: 0 8px 18px; }
-  .brand .leaf { width: 26px; height: 26px; flex: none; color: var(--good); }
-  .brand .name { font-family: var(--f-mark); font-size: 1.18rem; font-weight: 700; letter-spacing: -.015em; }
+  .brand { height: 40px; display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 700; letter-spacing: -.2px; margin: 0 6px 14px; }
+  .brand svg { width: 27px; height: 27px; flex: none; }
 
-  .navbtn {
-    display: flex; align-items: center; gap: 11px; width: 100%;
-    border: 0; background: transparent; cursor: pointer; text-align: left;
-    padding: 10px 12px; border-radius: 9px; color: var(--ink-2);
-    font-size: .88rem; font-weight: 500;
+  .menu { display: grid; gap: 3px; margin-top: 2px; }
+  .menu-btn {
+    border: 0; background: transparent; color: #d4ddd8; padding: 10px 12px;
+    border-radius: 9px; text-align: left; font-size: 13px; font-weight: 500;
+    display: flex; align-items: center; gap: 10px; white-space: nowrap; width: 100%;
   }
-  .navbtn svg { width: 18px; height: 18px; flex: none; opacity: .85; }
-  .navbtn:hover { background: var(--surface-2); color: var(--ink); }
-  .navbtn[aria-selected="true"] { background: var(--surface-3); color: var(--ink); font-weight: 600; }
-  .navbtn .badge {
-    margin-left: auto; font-family: var(--f-data); font-size: .68rem; font-weight: 600;
+  .menu-btn svg { width: 17px; height: 17px; flex: none; opacity: .95; }
+  .menu-btn:hover { background: rgba(255,255,255,.06); }
+  .menu-btn[aria-selected="true"] { background: var(--dark4); color: #fff; }
+  .sidebar[data-theme="light"] .menu-btn { color: #27332e; }
+  .sidebar[data-theme="light"] .menu-btn:hover { background: #f0eee9; }
+  .sidebar[data-theme="light"] .menu-btn[aria-selected="true"] { background: #d9efd9; color: #173b25; }
+  .sidebar[data-theme="brown"] .menu-btn[aria-selected="true"] { background: rgba(208,184,116,.16); color: #fff; }
+  .menu-btn .badge {
+    margin-left: auto; font-family: var(--f-data); font-size: .68rem; font-weight: 700;
     background: var(--warn-soft); color: var(--warn); padding: 1px 6px; border-radius: 5px;
   }
-  .navbtn .badge[hidden] { display: none; }
+  .menu-btn .badge[hidden] { display: none; }
 
-  .sidefoot { margin-top: auto; padding: 14px 10px 0; border-top: 1px solid var(--line); font-size: .74rem; color: var(--muted); }
-  .sidefoot .k { display: flex; align-items: center; gap: 7px; color: var(--ink-2); font-weight: 600; margin-bottom: 4px; }
-  .sidefoot .v { font-family: var(--f-data); font-size: .72rem; }
+  .status { margin-top: auto; font-size: 11px; line-height: 1.6; color: #a6b2ac; padding: 0 8px; }
+  .sidebar[data-theme="light"] .status { color: #394640; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--green); margin-right: 7px; box-shadow: 0 0 10px rgba(39,200,74,.5); }
+  .dot.warn { background: var(--warn); box-shadow: 0 0 10px rgba(249,185,11,.5); }
+  .status b { font-weight: 600; color: inherit; }
+  .statusdetail { font-family: var(--f-data); font-size: .68rem; margin-top: 4px; opacity: .85; }
 
-  .main { min-width: 0; display: flex; flex-direction: column; }
+  .mobile-top { display: none; }
+  .viewport { min-width: 0; }
+  .screen { display: none; min-height: 100vh; }
+  .screen.active { display: block; }
+
+  @media (max-width: 860px) {
+    .mobile-top { display: flex; height: 54px; align-items: center; justify-content: space-between; padding: 0 16px; }
+    .mobile-brand { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; }
+    .mobile-brand svg { width: 23px; height: 23px; }
+    .screen { min-height: calc(100vh - 118px); }
+  }
+
+  .mobile-bottom {
+    display: none; grid-template-columns: repeat(5, 1fr); height: 64px;
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
+    background: rgba(7,19,15,.98); border-top: 1px solid var(--border);
+    backdrop-filter: blur(16px);
+  }
+  @media (max-width: 860px) { .mobile-bottom { display: grid; } }
+  .mobile-bottom button {
+    border: 0; background: transparent; color: #94a39c; font-size: 9.5px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    position: relative;
+  }
+  .mobile-bottom button svg { width: 19px; height: 19px; }
+  .mobile-bottom button[aria-selected="true"] { color: var(--green2); }
+  .mobile-bottom .badge {
+    position: absolute; top: 3px; right: 50%; margin-right: -20px;
+    font-family: var(--f-data); font-size: .58rem; font-weight: 700;
+    background: var(--warn); color: var(--dark); min-width: 14px; height: 14px;
+    border-radius: 7px; display: grid; place-items: center; padding: 0 3px;
+  }
+  .mobile-bottom .badge[hidden] { display: none; }
+
+  /* ------------------------------------------------------------------- */
+  /* home                                                                 */
+  /* ------------------------------------------------------------------- */
+
+  .screen[data-screen="home"] { background: linear-gradient(160deg, #0b1e18, #081511 64%, #091a15); }
 
   .hero {
-    position: relative; padding: 26px 22px 22px;
-    background:
-      radial-gradient(120% 140% at 88% -10%, rgba(88,230,107,.16) 0%, rgba(88,230,107,0) 55%),
-      radial-gradient(90% 120% at 10% 110%, rgba(87,200,245,.12) 0%, rgba(87,200,245,0) 60%),
-      linear-gradient(160deg, var(--surface-2) 0%, var(--surface) 62%, var(--bg) 100%);
-    border-bottom: 1px solid var(--line);
+    position: relative; overflow: hidden; padding: 30px 24px 18px;
+    border-bottom: 1px solid rgba(255,255,255,.04);
   }
-  @media (max-width: 780px) { .hero { padding: 20px 16px 18px; } }
-  .herotop { display: flex; align-items: flex-start; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
-  .herotop > .greetblock { flex: 1 1 200px; min-width: 0; }
-  .greeting { font-family: var(--f-mark); font-size: 1.72rem; font-weight: 600; letter-spacing: -.02em; margin: 0; }
-  @media (max-width: 780px) { .greeting { font-size: 1.44rem; } }
-  .subgreet { color: var(--muted); font-size: .82rem; margin-top: 2px; }
-  .herotop .spacer { flex: 1 1 auto; }
-  .phonebrand { display: none; align-items: center; gap: 9px; margin-bottom: 12px; }
-  @media (max-width: 780px) { .phonebrand { display: flex; } }
-  .phonebrand .leaf { width: 22px; height: 22px; color: var(--good); }
-  .phonebrand .name { font-family: var(--f-mark); font-size: 1.05rem; font-weight: 700; }
+  .hero:before {
+    content: ""; position: absolute; inset: 0;
+    background: radial-gradient(circle at 75% 20%, rgba(103,151,68,.24), transparent 45%),
+                radial-gradient(circle at 8% 95%, rgba(91,153,73,.20), transparent 45%);
+  }
+  @media (max-width: 860px) { .hero { padding: 14px 16px 14px; } }
 
-  .pill {
-    display: inline-flex; align-items: center; gap: 6px;
-    font-size: .72rem; font-weight: 600; padding: 3px 10px; border-radius: 999px; white-space: nowrap;
+  .hero-quote {
+    position: absolute; right: 24px; top: 24px; text-align: right; z-index: 2;
+    font: italic 12px/1.3 var(--f-mark); color: #fff;
   }
-  .pill.good { background: var(--good-soft); color: var(--good); }
-  .pill.warn { background: var(--warn-soft); color: var(--warn); }
-  .pill.crit { background: var(--crit-soft); color: var(--crit); }
-  .pill.info { background: var(--accent-soft); color: var(--accent); }
-  .pill .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex: none; }
+  @media (max-width: 860px) { .hero-quote { display: none; } }
+
+  .hero-title { position: relative; z-index: 1; font-family: var(--f-mark); font-size: 30px; font-weight: 500; line-height: 1.08; margin: 2px 0 5px; letter-spacing: -.2px; }
+  @media (max-width: 860px) { .hero-title { font-size: 22px; } }
+  .hero-sub { position: relative; z-index: 1; color: #e2e9e4; font-size: 12px; }
 
   .unitbtn {
-    border: 1px solid var(--line-2); background: var(--surface); border-radius: 8px;
-    padding: 4px 10px; font-size: .74rem; font-weight: 600; cursor: pointer;
-    font-family: var(--f-data); color: var(--ink-2);
+    position: absolute; top: 28px; left: 24px; z-index: 3;
+    border: 1px solid var(--border); background: rgba(0,0,0,.2); border-radius: 8px;
+    padding: 4px 10px; font-size: .74rem; font-weight: 600; color: #fff; font-family: var(--f-data);
   }
-  .unitbtn:hover { border-color: var(--muted); color: var(--ink); }
+  @media (min-width: 861px) { .unitbtn { left: auto; right: 24px; top: 24px; } }
+  @media (max-width: 860px) { .unitbtn { top: 12px; right: 14px; left: auto; } }
 
-  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
-  @media (max-width: 900px) { .tiles { grid-template-columns: repeat(2, 1fr); } }
+  .sensor-grid { position: relative; z-index: 2; display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin-top: 20px; }
+  @media (max-width: 860px) { .sensor-grid { grid-template-columns: 1fr 1fr; margin-top: 44px; } }
 
-  .tile {
-    background: color-mix(in srgb, var(--surface) 80%, transparent);
-    border: 1px solid var(--line); border-radius: var(--radius);
-    padding: 12px 13px; display: flex; gap: 11px; align-items: flex-start;
+  .sensor-card {
+    background: rgba(19,48,39,.87); border: 1px solid rgba(255,255,255,.07); border-radius: 10px;
+    padding: 10px 12px; display: grid; grid-template-columns: 40px 1fr; align-items: center; gap: 10px;
+    box-shadow: 0 5px 16px rgba(0,0,0,.11); backdrop-filter: blur(6px);
   }
-  .tile .ico {
-    width: 32px; height: 32px; flex: none; border-radius: 9px;
-    display: grid; place-items: center; background: var(--surface-3); color: var(--accent);
-  }
-  .tile .ico svg { width: 17px; height: 17px; }
-  .tile .k { font-size: .7rem; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; }
-  .tile .v { font-family: var(--f-data); font-size: 1.12rem; font-weight: 500; font-variant-numeric: tabular-nums; margin-top: 1px; }
-  .tile .v .u { font-size: .7rem; color: var(--muted); margin-left: 3px; font-weight: 400; }
-  .tile .note { font-size: .68rem; color: var(--muted); margin-top: 2px; }
-
-  .panel { padding: 20px 22px 26px; display: none; }
-  .panel.active { display: block; }
-  @media (max-width: 780px) { .panel { padding: 16px 16px 22px; } }
-
-  .sectionlabel {
-    font-size: .68rem; font-weight: 600; letter-spacing: .11em; text-transform: uppercase;
-    color: var(--muted); margin: 24px 0 10px;
-  }
-  .sectionlabel:first-child { margin-top: 0; }
+  .sensor-icon { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: #1d4c3b; flex: none; }
+  .sensor-icon svg { width: 22px; height: 22px; }
+  .sensor-label { font-size: 10px; color: #d2ddd7; margin-bottom: 3px; white-space: nowrap; }
+  .sensor-value { font-family: var(--f-data); font-size: 17px; font-weight: 600; white-space: nowrap; line-height: 1.1; }
+  .sensor-value .u { font-size: 10px; font-weight: 500; color: #c1d0c9; margin-left: 2px; }
+  .sensor-note { font-size: 10px; color: var(--green2); margin-top: 3px; }
 
   .banner {
-    display: flex; gap: 11px; align-items: flex-start;
-    background: var(--warn-soft); border: 1px solid color-mix(in srgb, var(--warn) 26%, transparent);
-    border-radius: var(--radius); padding: 12px 14px; margin-bottom: 16px;
-    font-size: .82rem; color: var(--ink-2);
+    display: flex; gap: 11px; align-items: flex-start; margin: 14px 22px 0;
+    background: var(--warn-soft); border: 1px solid rgba(249,185,11,.28);
+    border-radius: var(--radius); padding: 12px 14px; font-size: .82rem; color: #f0ead9;
   }
-  .banner.crit { background: var(--crit-soft); border-color: color-mix(in srgb, var(--crit) 26%, transparent); }
   .banner[hidden] { display: none; }
   .banner .ico { color: var(--warn); font-weight: 700; font-family: var(--f-data); flex: none; }
-  .banner.crit .ico { color: var(--crit); }
-  .banner b { color: var(--ink); }
+  .banner b { color: #fff; }
+  @media (max-width: 860px) { .banner { margin: 12px 14px 0; } }
 
-  .empty { color: var(--muted); font-size: .85rem; padding: 20px 4px; }
+  .home-panels { padding: 16px 20px 26px; display: grid; grid-template-columns: 1.05fr 1fr 1fr; gap: 12px; }
+  @media (max-width: 1080px) { .home-panels { grid-template-columns: 1fr; } }
+  @media (max-width: 860px) { .home-panels { padding: 12px 14px 20px; } }
 
-  .grid { display: grid; gap: 12px; grid-template-columns: 1fr; }
-  @media (min-width: 900px) { .grid.two { grid-template-columns: 1fr 1fr; } }
+  .panel { background: linear-gradient(180deg, #112a22, #10241e); border: 1px solid rgba(255,255,255,.07); border-radius: var(--radius); padding: 14px; }
+  .panel-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .panel-head h3 { font-size: 13px; margin: 0; font-weight: 700; }
+  .panel-link { border: 0; background: none; font-size: 11px; padding: 0; font-weight: 600; }
 
-  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 15px; }
-  .card.lift { box-shadow: var(--shadow); }
+  .plant-list { display: grid; gap: 4px; }
+  .plant-item { display: grid; grid-template-columns: 34px 1fr 10px; align-items: center; gap: 9px; min-height: 44px; background: rgba(255,255,255,.04); border-radius: 8px; padding: 5px 9px; width: 100%; text-align: left; }
+  .plant-thumb { font-size: 22px; }
+  .plant-name { font-size: 12px; font-weight: 650; line-height: 1.15; }
+  .plant-state { font-size: 10.5px; color: var(--good); margin-top: 2px; }
+  .plant-state.warn { color: var(--warn); }
+  .plant-state.crit { color: var(--crit); }
+  .plant-state.info { color: var(--muted); }
+  .arrow { font-size: 16px; color: #6f8279; }
 
-  .cardhead { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px; }
-  .cardhead h3 { margin: 0; font-size: 1rem; font-weight: 600; letter-spacing: -.008em; }
-  .cardhead .sub { font-size: .74rem; color: var(--muted); margin-top: 2px; }
-  .cardhead .spacer { flex: 1; }
+  .timeline { position: relative; padding-left: 20px; margin-top: 2px; }
+  .timeline:before { content: ""; position: absolute; left: 5px; top: 8px; bottom: 8px; width: 1px; background: #576e64; }
+  .trow { position: relative; display: grid; grid-template-columns: 44px 1fr; gap: 6px; padding: 8px 0; font-size: 11px; }
+  .trow:before { content: ""; position: absolute; left: -19px; top: 11px; width: 8px; height: 8px; border-radius: 50%; border: 1px solid #a7b6af; background: #10241e; }
+  .trow.done:before { background: var(--green); border-color: var(--green); box-shadow: 0 0 0 2px rgba(39,200,74,.15); }
+  .trow b { font-family: var(--f-data); font-size: 10.5px; color: #cfd8d2; }
+  .trow span { color: #d0d9d4; }
+  .trow em { font-style: normal; color: var(--green2); }
 
-  .meter { margin: 4px 0 13px; }
-  .meterrow { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
-  .bignum { font-family: var(--f-data); font-size: 2rem; font-weight: 500; letter-spacing: -.025em; font-variant-numeric: tabular-nums; line-height: 1.1; }
-  .bignum.stale { color: var(--muted); }
-  .unit { font-size: .74rem; color: var(--muted); }
-  .delta { font-size: .76rem; color: var(--muted); margin-left: auto; font-family: var(--f-data); }
+  .growlight-status { display: flex; align-items: center; gap: 9px; margin-bottom: 10px; }
+  .growlight-status .gpill { font-size: 11px; font-weight: 700; padding: 4px 11px; border-radius: 999px; }
+  .growlight-status .gpill.on { background: var(--good-soft); color: var(--good); }
+  .growlight-status .gpill.off { background: rgba(255,255,255,.08); color: var(--muted); }
+  .growlight-row { font-size: 11px; color: #d0d9d4; padding: 5px 0; border-top: 1px solid rgba(255,255,255,.06); display: flex; justify-content: space-between; gap: 8px; }
+  .growlight-row:first-of-type { border-top: 0; }
+  .growlight-row b { font-family: var(--f-data); color: #fff; }
 
-  .track { position: relative; height: 9px; background: var(--surface-2); border-radius: 5px; overflow: hidden; }
-  .track .band { position: absolute; top: 0; bottom: 0; background: var(--good-soft); }
-  .track .fill { position: absolute; top: 0; bottom: 0; left: 0; background: var(--accent); border-radius: 5px 0 0 5px; }
-  .track .fill.stale { background: var(--line-2); }
-  .ticks { display: flex; justify-content: space-between; font-family: var(--f-data); font-size: .66rem; color: var(--muted); margin-top: 5px; }
+  /* ------------------------------------------------------------------- */
+  /* plants                                                               */
+  /* ------------------------------------------------------------------- */
 
-  .kvs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; border-top: 1px solid var(--line); padding-top: 12px; }
-  .kv .k { font-size: .67rem; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
-  .kv .v { font-family: var(--f-data); font-size: .86rem; font-variant-numeric: tabular-nums; margin-top: 1px; }
-
-  .actions { display: flex; gap: 8px; margin-top: 13px; flex-wrap: wrap; }
-  .btn {
-    flex: 1; border: 1px solid var(--line-2); background: var(--surface-2); cursor: pointer;
-    padding: 10px 12px; border-radius: var(--radius-sm); font-size: .8rem; font-weight: 600;
-    min-width: 90px;
+  .screen[data-screen="plants"] {
+    background: radial-gradient(circle at 75% 5%, rgba(115,88,52,.18), transparent 35%),
+                linear-gradient(145deg, #201c16, #282218 55%, #2e271d);
+    color: #f8f5ee;
   }
-  .btn:hover { background: var(--surface-3); }
-  .btn:disabled { opacity: .5; cursor: not-allowed; }
-  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
-  .btn.primary:hover { filter: brightness(1.08); }
-  .guardnote { font-size: .7rem; color: var(--muted); margin-top: 7px; text-align: center; }
+  .plants-inner { padding: 22px 22px 8px; display: grid; gap: 16px; }
+  @media (max-width: 860px) { .plants-inner { padding: 14px 14px 4px; } }
 
-  .settingsform { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; margin-top: 12px; border-top: 1px solid var(--line); padding-top: 12px; }
-  .settingsform label { display: flex; flex-direction: column; gap: 4px; font-size: .72rem; color: var(--muted); }
+  .plant-shell { display: grid; grid-template-columns: 1fr 2fr; gap: 12px; }
+  @media (max-width: 900px) { .plant-shell { grid-template-columns: 1fr; } }
+
+  .plant-profile { background: rgba(44,37,28,.78); border: 1px solid rgba(255,255,255,.08); border-radius: 12px; overflow: hidden; }
+  .plant-art {
+    height: 190px; display: grid; place-items: center; font-size: 84px;
+    background: radial-gradient(circle at 30% 20%, rgba(88,230,107,.28), transparent 60%), linear-gradient(160deg, #35402f, #23291d);
+  }
+  .plant-info { padding: 13px 15px 15px; }
+  .plant-info h2 { font-family: var(--f-mark); font-size: 22px; font-weight: 500; margin: 0 0 2px; }
+  .plant-info .latin { font-size: 10.5px; color: #c1b8ac; font-style: italic; }
+  .plant-info .healthy { margin-top: 10px; font-size: 11px; font-weight: 700; }
+  .plant-info .last-water { font-size: 10.5px; color: #ddd4c8; margin-top: 7px; }
+  .plant-info .quote-plant { font: italic 12px var(--f-mark); margin-top: 16px; color: #f4eee4; }
+
+  .plant-main { background: rgba(53,45,34,.8); border: 1px solid rgba(255,255,255,.08); border-radius: 12px; padding: 14px; }
+  .plant-sensors { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  @media (max-width: 560px) { .plant-sensors { grid-template-columns: 1fr 1fr; } }
+  .plant-sensor { padding: 10px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.05); border-radius: 9px; }
+  .plant-sensor .p-label { font-size: 10px; color: #e2d9ce; }
+  .plant-sensor .p-value { font-family: var(--f-data); font-size: 19px; font-weight: 650; margin: 5px 0 2px; }
+  .plant-sensor .p-value .u { font-size: 10px; color: #cfc5b7; margin-left: 3px; }
+  .plant-sensor .p-state { font-size: 10px; color: #f1e9dd; }
+  .plant-sensor .p-state.ok { color: var(--green2); }
+  .plant-sensor .p-state.warn { color: var(--warn); }
+  .plant-sensor .p-state.crit { color: var(--crit); }
+
+  .plant-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .run {
+    flex: 1; border: 1px solid #2fa5ed; background: #16668e; color: #fff; border-radius: 7px;
+    padding: 9px 12px; font-size: 12px; font-weight: 600; min-width: 120px;
+  }
+  .run:hover { filter: brightness(1.1); }
+  .run:disabled { opacity: .5; cursor: not-allowed; }
+  .guardnote { font-size: 10.5px; color: #cfc5b7; margin-top: 8px; text-align: center; }
+
+  details.settings summary { cursor: pointer; font-size: 12px; color: #7fd0ff; font-weight: 600; list-style: none; margin-top: 12px; }
+  details.settings summary::-webkit-details-marker { display: none; }
+  .settingsform { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; margin-top: 10px; border-top: 1px solid rgba(255,255,255,.08); padding-top: 12px; }
+  .settingsform label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: #cfc5b7; }
   .settingsform input { width: 100%; }
   .settingsform .full { grid-column: 1 / -1; display: flex; gap: 8px; justify-content: flex-end; }
-  details.settings summary { cursor: pointer; font-size: .78rem; color: var(--accent); font-weight: 600; list-style: none; margin-top: 10px; }
-  details.settings summary::-webkit-details-marker { display: none; }
 
+  .zone-card {
+    background: rgba(44,37,28,.6); border: 1px solid rgba(255,255,255,.08); border-radius: 12px; padding: 14px;
+  }
+  .zone-card .zone-title { font-family: var(--f-data); font-size: 15px; font-weight: 600; }
+  .zone-card .zone-meta { font-size: 11px; color: #cfc5b7; margin-top: 3px; }
+  .zone-card .footnote { font-size: 11px; color: #b3a998; margin-top: 10px; }
+  .sectionlabel { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #b3a998; margin: 0 0 4px; }
+  .empty { color: var(--muted); font-size: 13px; padding: 20px 4px; }
+
+  /* ------------------------------------------------------------------- */
+  /* analytics                                                            */
+  /* ------------------------------------------------------------------- */
+
+  .screen[data-screen="analytics"] { background: #f6f4ee; color: #15201c; }
+  .analytics-inner { padding: 20px 22px 26px; }
+  @media (max-width: 860px) { .analytics-inner { padding: 12px 14px 20px; } }
+  .analytics-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+  .analytics-top h1 { font-size: 22px; margin: 0; font-weight: 730; letter-spacing: -.3px; }
+  .range-tabs { display: flex; gap: 2px; background: #fff; border: 1px solid #e0ddd6; border-radius: 8px; padding: 2px; }
+  .range-tabs button { border: 0; background: transparent; padding: 6px 11px; border-radius: 6px; font-size: 11px; color: #4b554f; font-weight: 600; }
+  .range-tabs button[aria-pressed="true"] { background: #17221e; color: #fff; }
+  .tier-pill { font-size: 10.5px; font-weight: 600; color: #4b554f; background: #fff; border: 1px solid #e0ddd6; border-radius: 999px; padding: 4px 11px; }
+
+  .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media (max-width: 760px) { .chart-grid { grid-template-columns: 1fr; } }
+  .chart-card { background: #fff; border: 1px solid #dfdcd5; border-radius: 10px; padding: 12px 13px 8px; box-shadow: 0 2px 6px rgba(0,0,0,.02); }
+  .chart-title { font-size: 12px; font-weight: 700; margin-bottom: 2px; }
+  .chart-sub { font-size: 10.5px; color: #7a8078; margin-bottom: 4px; }
   .chartwrap { overflow-x: auto; }
   .chart { display: block; width: 100%; height: auto; touch-action: pan-y; }
-  .chart .axis { stroke: var(--line-2); stroke-width: 1; }
-  .chart .gridline { stroke: var(--line); stroke-width: 1; stroke-dasharray: 2 4; }
-  .chart .tick { font-family: var(--f-data); font-size: 9.5px; fill: var(--muted); }
-  .chart .bandfill { fill: var(--good); opacity: .10; }
-  .chart .bandedge { stroke: var(--good); stroke-width: 1; stroke-dasharray: 3 3; opacity: .5; }
-  .chart .series { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
-  .chart .areafill { fill: var(--accent); opacity: .09; }
-  .chart .evt { fill: var(--accent); }
-  .chart .evtline { stroke: var(--accent); stroke-width: 1; stroke-dasharray: 2 3; opacity: .45; }
-  .chart .crosshair { stroke: var(--ink-2); stroke-width: 1; opacity: .5; }
-  .chart .cursordot { fill: var(--accent); stroke: var(--surface); stroke-width: 2; }
-  .chart .endlabel { font-family: var(--f-data); font-size: 10px; font-weight: 600; fill: var(--accent); }
+  .chart .axis { stroke: #d8d5cc; stroke-width: 1; }
+  .chart .gridline { stroke: #ecebe5; stroke-width: 1; stroke-dasharray: 2 4; }
+  .chart .tick { font-family: var(--f-data); font-size: 9.5px; fill: #8d948f; }
+  .chart .bandfill { fill: #27b55f; opacity: .09; }
+  .chart .bandedge { stroke: #27b55f; stroke-width: 1; stroke-dasharray: 3 3; opacity: .5; }
+  .chart .series { fill: none; stroke: #2098f5; stroke-width: 2.2; stroke-linejoin: round; stroke-linecap: round; }
+  .chart .areafill { fill: #2098f5; opacity: .08; }
+  .chart .evt { fill: #2098f5; }
+  .chart .evtline { stroke: #2098f5; stroke-width: 1; stroke-dasharray: 2 3; opacity: .4; }
+  .chart .crosshair { stroke: #4b554f; stroke-width: 1; opacity: .5; }
+  .chart .cursordot { fill: #2098f5; stroke: #fff; stroke-width: 2; }
 
   .chartbox { position: relative; }
   .tip {
     position: absolute; pointer-events: none; z-index: 10;
-    background: var(--surface-2); border: 1px solid var(--line-2); border-radius: 8px;
+    background: #17221e; color: #fff; border-radius: 8px;
     padding: 7px 10px; box-shadow: var(--shadow); font-size: .74rem; white-space: nowrap;
     opacity: 0; transition: opacity .09s;
   }
-  .tip .t { font-family: var(--f-data); color: var(--muted); font-size: .68rem; }
+  .tip .t { font-family: var(--f-data); color: #b7c0ba; font-size: .68rem; }
   .tip .v { font-family: var(--f-data); font-weight: 600; font-size: .84rem; }
 
-  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
-  .chips button {
-    border: 1px solid var(--line-2); background: var(--surface); cursor: pointer;
-    padding: 5px 12px; border-radius: 999px; font-size: .74rem; font-weight: 600;
-    color: var(--muted); font-family: var(--f-data);
-  }
-  .chips button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+  /* ------------------------------------------------------------------- */
+  /* health + log (share the home/dark theme)                            */
+  /* ------------------------------------------------------------------- */
 
-  .rows { border-top: 1px solid var(--line); }
-  .row { display: flex; align-items: center; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--line); }
-  .row .name { font-weight: 600; font-size: .85rem; }
-  .row .meta { font-family: var(--f-data); font-size: .71rem; color: var(--muted); margin-top: 1px; }
+  .screen[data-screen="health"], .screen[data-screen="log"] { background: linear-gradient(160deg, #0b1e18, #081511 64%, #091a15); }
+  .subpanel-inner { padding: 22px 22px 26px; }
+  @media (max-width: 860px) { .subpanel-inner { padding: 14px 14px 20px; } }
+
+  .card { background: var(--dark3); border: 1px solid var(--border); border-radius: var(--radius); padding: 15px; margin-bottom: 16px; }
+  .rows { border-top: 1px solid var(--border); }
+  .row { display: flex; align-items: center; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--border); }
+  .row .name { font-weight: 600; font-size: 13px; }
+  .row .meta { font-family: var(--f-data); font-size: 11px; color: var(--muted); margin-top: 2px; }
   .row .spacer { flex: 1; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; font-size: .72rem; font-weight: 600; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+  .pill.good { background: var(--good-soft); color: var(--good); }
+  .pill.warn { background: var(--warn-soft); color: var(--warn); }
+  .pill.crit { background: var(--crit-soft); color: var(--crit); }
+  .pill.info { background: rgba(32,152,245,.14); color: var(--blue); }
+  .pill .dot2 { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex: none; }
+  .footnote { font-size: 11px; color: var(--muted); margin-top: 12px; }
 
-  .feed { border-top: 1px solid var(--line); }
-  .entry { display: grid; grid-template-columns: 68px 1fr; gap: 12px; padding: 13px 0; border-bottom: 1px solid var(--line); }
+  .feed { border-top: 1px solid var(--border); }
+  .entry { display: grid; grid-template-columns: 68px 1fr; gap: 12px; padding: 13px 0; border-bottom: 1px solid var(--border); }
   .entry .when { font-family: var(--f-data); font-size: .72rem; color: var(--muted); font-variant-numeric: tabular-nums; }
-  .entry .what { min-width: 0; }
   .entry .head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
   .entry .who { font-family: var(--f-data); font-size: .7rem; color: var(--muted); }
-  .entry .reason { font-size: .82rem; color: var(--ink-2); }
-  .entry .reason b { color: var(--ink); font-weight: 600; }
-
-  .footnote { font-size: .75rem; color: var(--muted); margin-top: 12px; }
-
-  .tabbar {
-    display: none; border-top: 1px solid var(--line); background: var(--surface);
-    padding: 7px 4px calc(7px + env(safe-area-inset-bottom));
-    position: sticky; bottom: 0;
-  }
-  @media (max-width: 780px) { .tabbar { display: grid; grid-template-columns: repeat(4, 1fr); } }
-  .tabbar button {
-    border: 0; background: transparent; cursor: pointer; color: var(--muted);
-    display: flex; flex-direction: column; align-items: center; gap: 3px;
-    padding: 6px 2px; font-size: .67rem; font-weight: 600; position: relative;
-  }
-  .tabbar button svg { width: 19px; height: 19px; }
-  .tabbar button[aria-selected="true"] { color: var(--good); }
-  .tabbar .badge {
-    position: absolute; top: 2px; right: 50%; margin-right: -18px;
-    font-family: var(--f-data); font-size: .58rem; font-weight: 700;
-    background: var(--warn); color: var(--bg-deep);
-    min-width: 14px; height: 14px; border-radius: 7px; display: grid; place-items: center; padding: 0 3px;
-  }
-  .tabbar .badge[hidden] { display: none; }
+  .entry .reason { font-size: .82rem; color: #d4ddd8; }
+  .entry .reason b { color: #fff; font-weight: 600; }
 
   .toast {
-    position: fixed; left: 50%; bottom: 26px; transform: translate(-50%, 14px);
-    background: var(--ink); color: var(--bg-deep); padding: 11px 17px; border-radius: 9px;
-    font-size: .82rem; font-weight: 500; box-shadow: var(--shadow); z-index: 50;
+    position: fixed; left: 50%; bottom: 78px; transform: translate(-50%, 14px);
+    background: #17392e; color: #fff; padding: 11px 17px; border-radius: 9px;
+    font-size: .82rem; font-weight: 500; box-shadow: var(--shadow); z-index: 60;
     opacity: 0; pointer-events: none; transition: opacity .18s, transform .18s; max-width: 90vw;
+    border: 1px solid rgba(255,255,255,.12);
   }
+  @media (min-width: 861px) { .toast { bottom: 26px; } }
   .toast.show { opacity: 1; transform: translate(-50%, 0); }
 </style>
 </head>
 <body>
 
-<div class="app">
-<div class="shell">
+<div class="app" id="app">
 
-  <aside class="sidebar">
+  <aside class="sidebar" id="sidebar" data-theme="dark">
     <div class="brand">
-      <svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
-        <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/>
-        <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>
-      </svg>
-      <span class="name">SmartGarden</span>
+      <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M31 4C17 6 8 15 10 28c8 1 15-3 19-9 3-5 4-10 2-15Z" fill="#29cb4c"/><path d="M12 34c2-10 8-18 17-25" fill="none" stroke="#79ee8b" stroke-width="2.2" stroke-linecap="round"/></svg>
+      <span>SmartGarden</span>
     </div>
-
-    <button class="navbtn" role="tab" aria-selected="true" data-tab="plants">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 22c0-6 3-9 8-10-1 6-4 9-8 10Z"/><path d="M12 22c0-6-3-9-8-10 1 6 4 9 8 10Z"/><path d="M12 22V11"/></svg>
-      Plants
-    </button>
-    <button class="navbtn" role="tab" aria-selected="false" data-tab="history">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 14l4-5 3 3 5-7"/></svg>
-      History
-    </button>
-    <button class="navbtn" role="tab" aria-selected="false" data-tab="health">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M22 12h-4l-3 8-4-16-3 8H2"/></svg>
-      Health <span class="badge" id="health-badge-side" hidden>0</span>
-    </button>
-    <button class="navbtn" role="tab" aria-selected="false" data-tab="log">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-      Log
-    </button>
-
-    <div class="sidefoot">
-      <div class="k"><span class="pill good" id="live-pill" style="padding:2px 7px"><span class="dot"></span>Live</span></div>
-      <div class="v" id="live-detail">connecting&hellip;</div>
+    <nav class="menu" id="sidebar-menu"></nav>
+    <div class="status">
+      <div><span class="dot" id="live-dot"></span><b id="live-label">Connecting&hellip;</b></div>
+      <div class="statusdetail" id="live-detail"></div>
     </div>
   </aside>
 
-  <div class="main">
-
-  <header class="hero">
-    <div class="phonebrand">
-      <svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
-        <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/>
-        <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>
-      </svg>
-      <span class="name">SmartGarden</span>
-      <span style="flex:1"></span>
-      <span class="pill good" id="live-pill-mobile"><span class="dot"></span>Live</span>
-    </div>
-
-    <div class="herotop">
-      <div class="greetblock">
-        <h1 class="greeting" id="greeting">SmartGarden</h1>
-        <div class="subgreet" id="subgreet">Loading&hellip;</div>
+  <div class="viewport">
+    <div class="mobile-top">
+      <div class="mobile-brand">
+        <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M31 4C17 6 8 15 10 28c8 1 15-3 19-9 3-5 4-10 2-15Z" fill="#29cb4c"/><path d="M12 34c2-10 8-18 17-25" fill="none" stroke="#79ee8b" stroke-width="2.2" stroke-linecap="round"/></svg>
+        <span>SmartGarden</span>
       </div>
-      <span class="spacer"></span>
-      <button class="unitbtn" id="unit">&deg;C</button>
+      <span class="pill good" id="live-pill-mobile"><span class="dot2"></span>Live</span>
     </div>
 
-    <div class="tiles" id="hero-tiles"></div>
-  </header>
+    <section class="screen active" data-screen="home" data-theme="dark">
+      <div class="hero">
+        <div class="hero-quote">&ldquo;To plant a garden<br>is to believe in tomorrow.&rdquo;</div>
+        <button class="unitbtn" id="unit">&deg;C</button>
+        <div class="hero-title" id="greeting">SmartGarden</div>
+        <div class="hero-sub" id="subgreet">Loading&hellip;</div>
+        <div class="sensor-grid" id="hero-tiles"></div>
+      </div>
+      <div class="banner" id="stale-banner" hidden><span class="ico">!</span><div id="stale-banner-text"></div></div>
+      <div class="home-panels">
+        <div class="panel">
+          <div class="panel-head"><h3>Plant status</h3><button class="panel-link" data-goto="plants">View all &rsaquo;</button></div>
+          <div class="plant-list" id="home-plant-list"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Today&rsquo;s schedule</h3></div>
+          <div class="timeline" id="home-schedule"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Grow light</h3></div>
+          <div id="home-growlight"></div>
+        </div>
+      </div>
+    </section>
 
-  <section class="panel active" data-panel="plants">
-    <div class="banner" id="stale-banner" hidden>
-      <span class="ico">!</span>
-      <div id="stale-banner-text"></div>
-    </div>
-    <div class="grid two" id="plant-cards"></div>
-    <div class="sectionlabel">Today's water, by zone</div>
-    <div id="zone-cards"></div>
-  </section>
+    <section class="screen" data-screen="plants" data-theme="brown">
+      <div class="plants-inner" id="plant-cards"></div>
+      <div class="plants-inner" style="padding-top:0">
+        <div class="sectionlabel">Zones</div>
+        <div id="zone-cards"></div>
+      </div>
+    </section>
 
-  <section class="panel" data-panel="history">
-    <div style="display:flex; align-items:center; gap:10px; margin-bottom:15px; flex-wrap:wrap">
-      <span class="chips" role="group" aria-label="Time range" id="range-chips">
-        <button data-hours="6" aria-pressed="false">6h</button>
-        <button data-hours="24" aria-pressed="true">24h</button>
-        <button data-hours="168" aria-pressed="false">7d</button>
-        <button data-hours="720" aria-pressed="false">30d</button>
-      </span>
-      <span style="flex:1"></span>
-      <span class="pill info" id="range-tier-pill">raw resolution</span>
-    </div>
-    <div id="history-charts"></div>
-  </section>
+    <section class="screen" data-screen="analytics" data-theme="light">
+      <div class="analytics-inner">
+        <div class="analytics-top">
+          <h1>Analytics</h1>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span class="range-tabs" role="group" aria-label="Time range" id="range-chips">
+              <button data-hours="6" aria-pressed="false">6h</button>
+              <button data-hours="24" aria-pressed="true">24h</button>
+              <button data-hours="168" aria-pressed="false">7d</button>
+              <button data-hours="720" aria-pressed="false">30d</button>
+            </span>
+            <span class="tier-pill" id="range-tier-pill">raw resolution</span>
+          </div>
+        </div>
+        <div class="chart-grid" id="history-charts"></div>
+      </div>
+    </section>
 
-  <section class="panel" data-panel="health">
-    <div class="sectionlabel">Nodes</div>
-    <div class="card"><div class="rows" id="health-nodes"></div>
-      <div class="footnote">A node is marked offline when nothing has arrived within its
-      declared reporting window, rather than showing its last value as if it were current.</div>
-    </div>
-    <div class="sectionlabel">Sensors</div>
-    <div class="card"><div class="rows" id="health-sensors"></div>
-      <div class="footnote">This is the only view that names a driver, an address or a mux
-      channel. Everywhere else a channel is referenced by its role in a zone, so a sensor
-      can be replaced or moved without touching a rule.</div>
-    </div>
-  </section>
+    <section class="screen" data-screen="health" data-theme="dark">
+      <div class="subpanel-inner">
+        <div class="sectionlabel">Nodes</div>
+        <div class="card"><div class="rows" id="health-nodes"></div>
+          <div class="footnote">A node is marked offline when nothing has arrived within its
+          declared reporting window, rather than showing its last value as if it were current.</div>
+        </div>
+        <div class="sectionlabel">Sensors</div>
+        <div class="card"><div class="rows" id="health-sensors"></div>
+          <div class="footnote">This is the only view that names a driver, an address or a mux
+          channel. Everywhere else a channel is referenced by its role in a zone, so a sensor
+          can be replaced or moved without touching a rule.</div>
+        </div>
+      </div>
+    </section>
 
-  <section class="panel" data-panel="log">
-    <div class="footnote" style="margin:0 0 14px">
-      Every tick writes what it decided and why. This is the same text an alert would carry.
-    </div>
-    <div class="feed" id="log-feed"></div>
-  </section>
+    <section class="screen" data-screen="log" data-theme="dark">
+      <div class="subpanel-inner">
+        <div class="footnote" style="margin:0 0 14px">
+          Every tick writes what it decided and why. This is the same text an alert would carry.
+        </div>
+        <div class="feed" id="log-feed"></div>
+      </div>
+    </section>
 
   </div>
 </div>
 
-  <nav class="tabbar" role="tablist" aria-label="Sections">
-    <button role="tab" aria-selected="true" data-tab="plants">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 22c0-6 3-9 8-10-1 6-4 9-8 10Z"/><path d="M12 22c0-6-3-9-8-10 1 6 4 9 8 10Z"/><path d="M12 22V11"/></svg>
-      Plants
-    </button>
-    <button role="tab" aria-selected="false" data-tab="history">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 14l4-5 3 3 5-7"/></svg>
-      History
-    </button>
-    <button role="tab" aria-selected="false" data-tab="health">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M22 12h-4l-3 8-4-16-3 8H2"/></svg>
-      Health<span class="badge" id="health-badge-tab" hidden>0</span>
-    </button>
-    <button role="tab" aria-selected="false" data-tab="log">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-      Log
-    </button>
-  </nav>
-
-</div>
+<nav class="mobile-bottom" id="mobile-nav"></nav>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
